@@ -921,7 +921,7 @@ validate_asp_apply(webs_t wp, int sid)
 			else if (!strncmp(v->name, "zapretc.", 8)) {
 				if (write_textarea_to_file(value, STORAGE_ZAPRET_DIR, file_name)) {
 					restart_needed_bits |= event_mask;
-					need_mtd_write = 1;
+					doSystem("/sbin/mtd_storage.sh save");	/* ng-port: сохранить файлы zapret во флеш */
 				}
 			}
 #endif

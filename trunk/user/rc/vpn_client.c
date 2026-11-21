@@ -63,13 +63,16 @@ start_vpn_client(void)
 {
 	FILE *fp;
 	int i_type, i_mppe, i_auth;
-	char *vpnc_peer, *vpnc_opt, tmp[256];
+	char *vpnc_peer, *vpnc_wg_peer, *vpnc_opt, tmp[256];
 
 	if (nvram_invmatch("vpnc_enable", "1") || get_ap_mode())
 		return 1;
 
+	i_type = nvram_get_int("vpnc_type");
 	vpnc_peer = nvram_safe_get("vpnc_peer");
-	if (strlen(vpnc_peer) < 1) {
+	vpnc_wg_peer = nvram_safe_get("vpnc_wg_peer_endpoint");
+
+	if (strlen(i_type == 3 ? vpnc_wg_peer : vpnc_peer) < 1) {
 		logmessage(VPNC_LOG_NAME, "Unable to start - remote server host is not defined!");
 		return 1;
 	}
@@ -78,11 +81,20 @@ start_vpn_client(void)
 	nvram_set_temp("vpnc_dom_t", "");
 	nvram_set_int_temp("vpnc_state_t", 0);
 
-	i_type = nvram_get_int("vpnc_type");
+#if defined(APP_AMNEZIAWG)
+	if (i_type == 3)
+		return start_wireguard_client();
+#endif
 #if defined(APP_OPENVPN)
 	if (i_type == 2)
 		return start_openvpn_client();
 #endif
+
+	if (i_type > 1) {
+		nvram_set_int("vpnc_enable", 0);
+		return 1;
+	}
+
 	vpnc_opt = VPN_CLIENT_PPPD_OPTIONS;
 
 	mkdir("/tmp/ppp", 0777);
@@ -220,6 +232,9 @@ stop_vpn_client(void)
 #if defined(APP_OPENVPN)
 	stop_openvpn_client();
 #endif
+#if defined(APP_AMNEZIAWG)
+	stop_wireguard_client();
+#endif
 
 	nvram_set_int_temp("l2tp_cli_t", 0);
 	nvram_set_int_temp("vpnc_state_t", 0);
@@ -260,6 +275,22 @@ restart_vpn_client(void)
 	if (xl2tpd_killed_vpnc && (nvram_match("l2tp_wan_t", "1") || nvram_match("l2tp_srv_t", "1")))
 		safe_start_xl2tpd();
 }
+
+void
+reapply_vpn_client(void)
+{
+        int i_type;
+
+        if (nvram_invmatch("vpnc_enable", "1") || get_ap_mode())
+                return;
+
+        i_type = nvram_get_int("vpnc_type");
+#if defined(APP_AMNEZIAWG)
+        if (i_type == 3)
+                reload_wireguard_client();
+#endif
+}
+
 
 void
 restore_dns_from_vpnc(void)

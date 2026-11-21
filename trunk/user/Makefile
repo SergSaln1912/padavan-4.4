@@ -173,6 +173,9 @@ dir_y += wireguard
 dir_y += wireguard-tools
 dir_y += wg-quick
 endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG),y)
+dir_y += wireguard
+endif
 dir_$(SAMBA_ENABLED)				+= samba36
 dir_$(SAMBA_ENABLED)				+= wsdd2
 dir_$(CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS)	+= chnroute

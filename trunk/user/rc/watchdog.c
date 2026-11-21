@@ -245,6 +245,9 @@ inet_handler(int is_ap_mode)
 		{
 			/* sync time to ntp server if necessary */
 			ntpc_handler();
+#if defined (APP_AMNEZIAWG)
+			watchdog_wireguard_client();
+#endif
 		}
 	}
 	else

@@ -399,6 +399,7 @@ int ipdown_vpns_main(int argc, char **argv);
 int start_vpn_client(void);
 void stop_vpn_client(void);
 void restart_vpn_client(void);
+void reapply_vpn_client(void);
 void restore_dns_from_vpnc(void);
 int ipup_vpnc_main(int argc, char **argv);
 int ipdown_vpnc_main(int argc, char **argv);
@@ -413,6 +414,18 @@ void restart_openvpn_server(void);
 int ovpn_server_script_main(int argc, char **argv);
 int ovpn_client_script_main(int argc, char **argv);
 int ovpn_server_expcli_main(int argc, char **argv);
+#endif
+#if defined (APP_AMNEZIAWG)
+/* wireguard.c */
+int start_wireguard_client(void);
+void stop_wireguard_client(void);
+int restart_wireguard_client(void);
+void reload_wireguard_client(void);
+void update_wireguard_client(void);
+void watchdog_wireguard_client(void);
+int start_wireguard_server(void);
+void stop_wireguard_server(void);
+void restart_wireguard_server(void);
 #endif
 
 /* net_wifi.c */

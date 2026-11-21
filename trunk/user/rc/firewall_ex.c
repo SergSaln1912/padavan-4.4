@@ -719,6 +719,11 @@ get_tcp_mss_ifname_vpns(int vpns_type)
 		return NULL;
 	else
 #endif
+#if defined (APP_AMNEZIAWG)
+	if (vpns_type == 3)
+		return "wg+";
+	else
+#endif
 		return "ppp+";
 }
 
@@ -732,6 +737,11 @@ get_tcp_mss_ifname_vpnc(int vpnc_type)
 	*/
 	if (vpnc_type == 2)
 		return NULL;
+	else
+#endif
+#if defined (APP_AMNEZIAWG)
+	if (vpnc_type == 3)
+		return IFNAME_CLIENT_WG;
 	else
 #endif
 		return IFNAME_CLIENT_PPP;
@@ -968,6 +978,12 @@ ipt_filter_rules(char *man_if, char *wan_if, char *lan_if, char *lan_ip,
 #endif
 		if (i_vpns_enable) {
 			int i_need_vpnlist = 1;
+#if defined (APP_AMNEZIAWG)
+			if (i_vpns_type == 3) {
+				int i_wg_port = nvram_safe_get_int("vpns_wg_port", 51820, 1, 65535);
+				fprintf(fp, "-A %s -p %s --dport %d -j %s\n", dtype, "udp", i_wg_port, logaccept);
+			} else
+#endif
 #if defined (APP_OPENVPN)
 			if (i_vpns_type == 2) {
 				const char *ov_prot = "udp";
@@ -1179,6 +1195,11 @@ ipt_filter_rules(char *man_if, char *wan_if, char *lan_if, char *lan_ip,
 #if defined (APP_OPENVPN)
 		if (i_vpns_type == 2 && i_vpns_ov_mode == 1)
 			fprintf(fp, "-A %s -i %s -j %s\n", dtype, IFNAME_SERVER_TUN, ftype);
+		else
+#endif
+#if defined (APP_AMNEZIAWG)
+		if (i_vpns_type == 3)
+			fprintf(fp, "-A %s -i %s -j %s\n", dtype, IFNAME_SERVER_WG, ftype);
 		else
 #endif
 			include_vpns_clients(fp);
@@ -1763,6 +1784,11 @@ ipt_nat_rules(char *man_if, char *man_ip,
 
 	vpnc_if = NULL;
 	if (i_vpnc_enable) {
+#if defined (APP_AMNEZIAWG)
+		if (i_vpnc_type == 3) {
+			vpnc_if = IFNAME_CLIENT_WG;
+		} else
+#endif
 #if defined (APP_OPENVPN)
 		if (i_vpnc_type == 2) {
 			if (nvram_get_int("vpnc_ov_mode") == 1)
@@ -1816,6 +1842,12 @@ ipt_nat_rules(char *man_if, char *man_ip,
 		if (wan_ip && nvram_match("redirect_all_dns", "1")) {
 			fprintf(fp, "-I %s -i %s -p tcp --dport 53 -j DNAT --to %s\n", "PREROUTING", lan_if, lan_ip);
 			fprintf(fp, "-I %s -i %s -p udp --dport 53 -j DNAT --to %s\n", "PREROUTING", lan_if, lan_ip);
+#if defined (APP_AMNEZIAWG)
+			if (i_vpns_enable && i_vpns_type == 3) {
+				fprintf(fp, "-I %s -i %s -p tcp --dport 53 -j DNAT --to %s\n", "PREROUTING", IFNAME_SERVER_WG, lan_ip);
+				fprintf(fp, "-I %s -i %s -p udp --dport 53 -j DNAT --to %s\n", "PREROUTING", IFNAME_SERVER_WG, lan_ip);
+			}
+#endif
 		}
 		
 		/* BattleNET (PREROUTING + POSTROUTING) */
@@ -1857,6 +1889,19 @@ ipt_nat_rules(char *man_if, char *man_ip,
 			if (strcmp(vpn_net, lan_net) != 0) {
 				int i_vpns_vuse = nvram_get_int("vpns_vuse");
 				int i_vpns_actl = nvram_get_int("vpns_actl");
+#if defined (APP_AMNEZIAWG)
+				if (i_vpns_type == 3) {
+					if (i_vpns_actl == 0 || i_vpns_actl == 1 || i_vpns_actl == 4) {
+						include_masquerade(fp, wan_if, wan_ip, vpn_net);
+
+						/* masquerade WG client connection for WG server clients */
+						if (vpnc_if)
+							include_masquerade(fp, vpnc_if, NULL, vpn_net);
+					}
+					if (i_vpns_vuse == 2)
+						include_masquerade(fp, lan_if, lan_ip, vpn_net);
+				} else
+#endif
 #if defined (APP_OPENVPN)
 				if (i_vpns_type == 2) {
 					if (i_vpns_ov_mode == 1) {
@@ -1970,6 +2015,11 @@ ipt_nat_rules(char *man_if, char *man_ip,
 #endif
 			/* skip DMZ for local VPN server */
 			if (i_vpns_enable) {
+#if defined (APP_AMNEZIAWG)
+				if (i_vpns_type == 3) {
+					vpn_proto_mask |= 0x08;
+				} else
+#endif
 #if defined (APP_OPENVPN)
 				if (i_vpns_type == 2) {
 					int i_prot = nvram_get_int("vpns_ov_prot");
@@ -1994,6 +2044,11 @@ ipt_nat_rules(char *man_if, char *man_ip,
 			
 			/* skip DMZ for local VPN client */
 			if (i_vpnc_enable) {
+#if defined (APP_AMNEZIAWG)
+				if (i_vpnc_type == 3) {
+					vpn_proto_mask |= 0x08;
+				} else
+#endif
 #if defined (APP_OPENVPN)
 				if (i_vpnc_type == 2) {
 					int i_prot = nvram_get_int("vpnc_ov_prot");
@@ -2226,6 +2281,9 @@ start_firewall_ex(void)
 #endif
 #if defined(APP_ZAPRET)
 	reload_zapret();
+#endif
+#if defined(APP_AMNEZIAWG)
+	update_wireguard_client();
 #endif
 
 	if (check_if_file_exist(int_iptables_script))

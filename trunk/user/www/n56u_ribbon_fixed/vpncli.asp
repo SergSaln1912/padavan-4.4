@@ -11,14 +11,17 @@
 <link rel="stylesheet" type="text/css" href="/bootstrap/css/bootstrap.min.css">
 <link rel="stylesheet" type="text/css" href="/bootstrap/css/main.css">
 <link rel="stylesheet" type="text/css" href="/bootstrap/css/engage.itoggle.css">
+<link rel="stylesheet" type="text/css" href="/jquery.multiSelectDropdown.css">
 
 <script type="text/javascript" src="/jquery.js"></script>
+<script type="text/javascript" src="/jquery.multiSelectDropdown.js"></script>
 <script type="text/javascript" src="/bootstrap/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/bootstrap/js/engage.itoggle.min.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/itoggle.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
+<script type="text/javascript" src="/help.js"></script>
 <script>
 var $j = jQuery.noConflict();
 
@@ -35,14 +38,16 @@ $j(document).ready(function() {
 </script>
 <script>
 
-lan_ipaddr_x = '<% nvram_get_x("", "lan_ipaddr"); %>';
-lan_netmask_x = '<% nvram_get_x("", "lan_netmask"); %>';
-fw_enable_x = '<% nvram_get_x("", "fw_enable_x"); %>';
-vpnc_state_last = '<% nvram_get_x("", "vpnc_state_t"); %>';
-ip6_service = '<% nvram_get_x("", "ip6_service"); %>';
-
 <% login_state_hook(); %>
 <% openvpn_cli_cert_hook(); %>
+
+let lan_ipaddr_x = '<% nvram_get_x("", "lan_ipaddr"); %>';
+let lan_netmask_x = '<% nvram_get_x("", "lan_netmask"); %>';
+let fw_enable_x = '<% nvram_get_x("", "fw_enable_x"); %>';
+let vpnc_state_last = '<% nvram_get_x("", "vpnc_state_t"); %>';
+let ip6_service = '<% nvram_get_x("", "ip6_service"); %>';
+let vpnc_type = '<% nvram_get_x("", "vpnc_type"); %>';
+let IPSetList = [<% get_ipset_list_hook(); %>];
 
 function initial(){
 	show_banner(0);
@@ -57,6 +62,13 @@ function initial(){
 		for (var i = 0; i < 4; i++) {
 			o.remove(2);
 		}
+	}
+
+	if (!found_app_wg()) {
+		$j("#vpnc_type option[value='3']").remove();
+	} else {
+		if (found_app_awg())
+			$j("#vpnc_type option[value='3']").html('AmneziaWG');
 	}
 
 	if (fw_enable_x == "0"){
@@ -74,17 +86,29 @@ function initial(){
 
 function update_vpnc_status(vpnc_state){
 	this.vpnc_state_last = vpnc_state;
-	showhide_div('col_vpnc_state', (vpnc_state == '1' && document.form.vpnc_enable[0].checked) ? 1 : 0);
+	if (vpnc_type == 3) {
+		showhide_div('col_vpnc_wg_state', (vpnc_state != 0 && document.form.vpnc_enable[0].checked) ? 1 : 0);
+		if (vpnc_state == 2) {
+			$("col_vpnc_wg_state").innerHTML = '<#Connecting#>';
+			$('col_vpnc_wg_state').setAttribute('class', 'label label-warning');
+		} else
+		if (vpnc_state == 1) {
+			$("col_vpnc_wg_state").innerHTML = '<#Connected#>';
+			$('col_vpnc_wg_state').setAttribute('class', 'label label-success');
+		}
+	} else {
+		showhide_div('col_vpnc_state', (vpnc_state != 0 && document.form.vpnc_enable[0].checked) ? 1 : 0);
+	}
 }
 
 function applyRule(){
 	if(validForm()){
 		showLoading();
-		
+
 		document.form.action_mode.value = " Apply ";
 		document.form.current_page.value = "/vpncli.asp";
 		document.form.next_page.value = "";
-		
+
 		document.form.submit();
 	}
 }
@@ -125,7 +149,9 @@ function validForm(){
 	if (!document.form.vpnc_enable[0].checked)
 		return true;
 
-	if(document.form.vpnc_peer.value.length < 4){
+	var mode = document.form.vpnc_type.value;
+
+	if((mode != "3") && document.form.vpnc_peer.value.length < 4){
 		alert("Remote host is invalid!");
 		document.form.vpnc_peer.focus();
 		return false;
@@ -134,8 +160,67 @@ function validForm(){
 	if(!validate_string(document.form.vpnc_peer))
 		return false;
 
-	var mode = document.form.vpnc_type.value;
-	if (mode == "2") {
+	if (mode == "3") {
+		if (document.form.vpnc_wg_if_addr.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.vpnc_wg_if_addr.focus();
+			document.form.vpnc_wg_if_addr.select();
+			return false;
+		}
+
+		if (document.form.vpnc_wg_if_private.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.vpnc_wg_if_private.focus();
+			document.form.vpnc_wg_if_private.select();
+			return false;
+		}
+
+		if (document.form.vpnc_wg_peer_public.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.vpnc_wg_peer_public.focus();
+			document.form.vpnc_wg_peer_public.select();
+			return false;
+		}
+
+		if (document.form.vpnc_wg_peer_endpoint.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.vpnc_wg_peer_endpoint.focus();
+			document.form.vpnc_wg_peer_endpoint.select();
+			return false;
+		}
+
+		if (document.form.vpnc_wg_peer_allowedips.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.vpnc_wg_peer_allowedips.focus();
+			document.form.vpnc_wg_peer_allowedips.select();
+			return false;
+		}
+
+		if(!validate_range(document.form.vpnc_wg_mtu, 1000, 1420)) {
+			return false;
+		}
+
+		if(!validate_range(document.form.vpnc_wg_peer_port, 1, 65535))
+			return false;
+
+		if (found_app_awg()) {
+			if(!validate_range(document.form.vpnc_awg_jc, 0, 128)) {
+				$("spoiler_vpnc_amnezia_junk").style.display = "";
+				return false;
+			}
+
+			if(!validate_range(document.form.vpnc_awg_jmin, 0, 1024)) {
+				$("spoiler_vpnc_amnezia_junk").style.display = "";
+				return false;
+			}
+
+			if(!validate_range(document.form.vpnc_awg_jmax, parseInt(document.form.vpnc_awg_jmin.value), 1024)) {
+				$("spoiler_vpnc_amnezia_junk").style.display = "";
+				return false;
+			}
+		}
+	}
+	else if (mode == "2") {
 		if(!validate_range(document.form.vpnc_ov_port, 1, 65535))
 			return false;
 	}
@@ -144,7 +229,7 @@ function validForm(){
 			return false;
 		if(!validate_range(document.form.vpnc_mru, 1000, 1460))
 			return false;
-		
+
 		if (document.form.vpnc_rnet.value.length > 0)
 			return valid_rlan_subnet(document.form.vpnc_rnet, document.form.vpnc_rmsk);
 	}
@@ -173,6 +258,8 @@ function change_vpnc_enabled() {
 		showhide_div('tab_vpnc_ssl', 0);
 		showhide_div('tbl_vpnc_route', 0);
 		textarea_ovpn_enabled(0);
+		showhide_div('tbl_vpnc_access_control', v);
+		showhide_div('tbl_vpnc_amnezia', v);
 	}else{
 		change_vpnc_type();
 	}
@@ -181,14 +268,16 @@ function change_vpnc_enabled() {
 function change_vpnc_type() {
 	var mode = document.form.vpnc_type.value;
 	var is_ov = (mode == "2") ? 1 : 0;
+	var is_wg = (mode == "3") ? 1 : 0;
 
-	showhide_div('row_vpnc_auth', !is_ov);
-	showhide_div('row_vpnc_mppe', !is_ov);
-	showhide_div('row_vpnc_pppd', !is_ov);
-	showhide_div('row_vpnc_mtu', !is_ov);
-	showhide_div('row_vpnc_mru', !is_ov);
-	showhide_div('tbl_vpnc_route', !is_ov);
+	showhide_div('row_vpnc_auth', !is_ov && !is_wg);
+	showhide_div('row_vpnc_mppe', !is_ov && !is_wg);
+	showhide_div('row_vpnc_pppd', !is_ov && !is_wg);
+	showhide_div('row_vpnc_mtu', !is_ov && !is_wg);
+	showhide_div('row_vpnc_mru', !is_ov && !is_wg);
+	showhide_div('tbl_vpnc_route', !is_ov && !is_wg);
 
+	showhide_div('row_vpnc_ov_import', is_ov);
 	showhide_div('row_vpnc_ov_port', is_ov);
 	showhide_div('row_vpnc_ov_prot', is_ov);
 	showhide_div('row_vpnc_ov_auth', is_ov);
@@ -204,6 +293,23 @@ function change_vpnc_type() {
 
 	textarea_ovpn_enabled(is_ov);
 
+	showhide_div('row_vpnc_wg', is_wg);
+	showhide_div('vpnc_peer_row', !is_wg);
+	showhide_div('tbl_vpnc_access_control', is_wg);
+	showhide_div('tbl_vpnc_amnezia', found_app_awg() && is_wg);
+	showhide_div('row_vpnc_ipset', found_support_ipset());
+	showhide_div('row_vpnc_ipset_exclude', found_support_ipset());
+	showhide_div('row_dipset', found_support_ipset());
+
+	showhide_div('row_vpnc_server_script', !is_wg);
+	showhide_div('row_vpnc_post_script', is_wg);
+
+	$("vpnc_use_dns").innerHTML = "<#VPNC_PDNS#>";
+	if (is_wg) {
+		$("vpnc_use_dns").innerHTML = "<#VPNC_WG_UseDNS#>";
+		vpnc_access_control();
+	}
+
 	if (is_ov) {
 		change_vpnc_ov_auth();
 		change_vpnc_ov_atls();
@@ -211,12 +317,12 @@ function change_vpnc_type() {
 	}
 	else {
 		showhide_div('row_vpnc_ov_cnat', 0);
-		
-		showhide_div('row_vpnc_user', 1);
-		showhide_div('row_vpnc_pass', 1);
+
+		showhide_div('row_vpnc_user', !is_wg);
+		showhide_div('row_vpnc_pass', !is_wg);
 	}
 
-	showhide_div('col_vpnc_state', (vpnc_state_last == '1') ? 1 : 0);
+	update_vpnc_status(vpnc_state_last);
 }
 
 function change_vpnc_ov_auth() {
@@ -237,6 +343,187 @@ function change_vpnc_ov_atls() {
 
 function change_vpnc_ov_mode() {
 	showhide_div('row_vpnc_ov_cnat', (document.form.vpnc_ov_mode.value == "1") ? 0 : 1);
+}
+
+function ov_conf_import() {
+	const fileInput = document.getElementById('ov_fileInput');
+	const file = fileInput.files[0];
+
+	if (!file) {
+		alert('Select file');
+		return;
+	}
+	if (file.size > 65536) {
+	alert("File is too big");
+		return;
+	}
+
+	const reader = new FileReader();
+	reader.onload = function(e) {
+		const content = e.target.result;
+		const lines = content.split(/\r?\n/);
+
+		let settings = {};
+		let certBlocks = {};
+		let currentBlock = null;
+		let blockContent = [];
+		let remoteSet = false;
+
+		document.querySelector('[name="vpnc_peer"]').value = '';
+		document.querySelector('[name="vpnc_ov_port"]').value = '1194';
+		document.querySelector('[name="vpnc_ov_prot"]').value = 0;
+		document.querySelector('[name="vpnc_ov_mode"]').value = 1;
+		document.querySelector('[name="vpnc_ov_auth"]').value = 0;
+		document.querySelector('[name="vpnc_user"]').value = '';
+		document.querySelector('[name="vpnc_pass"]').value = '';
+		document.querySelector('[name="vpnc_ov_mdig"]').value = 1;
+		document.querySelector('[name="vpnc_ov_ciph"]').value = 3;
+		document.querySelector('[name="vpnc_ov_ncp_clist"]').value = '';
+		document.querySelector('[name="vpnc_ov_compress"]').value = 0;
+		document.querySelector('[name="vpnc_ov_atls"]').value = 0;
+		document.querySelector('[name="ovpncli.ca.crt"]').value = '';
+		document.querySelector('[name="ovpncli.client.crt"]').value = '';
+		document.querySelector('[name="ovpncli.client.key"]').value = '';
+		document.querySelector('[name="ovpncli.ta.key"]').value = '';
+
+		lines.forEach(line => {
+			let trimmed = line.trim();
+
+			if (/^<\w+>/.test(trimmed)) {
+				currentBlock = trimmed.replace(/[<>]/g, '').toLowerCase();
+				blockContent = [];
+				return;
+			}
+			if (/^<\/\w+>/.test(trimmed)) {
+				certBlocks[currentBlock] = blockContent.join("\n");
+				currentBlock = null;
+				return;
+			}
+			if (currentBlock) {
+				blockContent.push(line);
+				return;
+			}
+
+			if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith(';')) return;
+
+			const parts = trimmed.split(/\s+/);
+			const key = parts[0].toLowerCase();
+			const value = parts.slice(1).join(' ');
+
+			if (key === 'remote') {
+				if (!remoteSet) {
+					settings[key] = value;
+					remoteSet = true;
+				}
+				return;
+			}
+
+			settings[key] = value;
+		});
+
+		if (settings['remote']) {
+			const parts = settings['remote'].split(/\s+/);
+			const host = parts[0] || '';
+			const port = parts[1] || '';
+			let protoHint = parts[2] ? parts[2].toLowerCase() : (settings['proto'] || 'udp').toLowerCase();
+
+			document.querySelector('[name="vpnc_peer"]').value = host;
+			if (port) document.querySelector('[name="vpnc_ov_port"]').value = port;
+
+			// IPv6?
+			let isIPv6 = /\[.*\]/.test(host) || (host.includes(':') && !host.match(/^\d+\.\d+\.\d+\.\d+$/));
+
+			let protValue;
+			switch (protoHint) {
+				case 'udp4': protValue = 0; break;
+				case 'tcp4': protValue = 1; break;
+				case 'udp6': protValue = 2; break;
+				case 'tcp6': protValue = 3; break;
+				case 'tcp':  protValue = isIPv6 ? 3 : 1; break;
+				case 'udp':  protValue = isIPv6 ? 2 : 0; break;
+				default:     protValue = isIPv6 ? 2 : 0; break; // udp on default
+			}
+
+			document.querySelector('[name="vpnc_ov_prot"]').value = protValue;
+		}
+
+		// dev
+		if (settings['dev']) {
+			let dev = settings['dev'].toLowerCase();
+			document.querySelector('[name="vpnc_ov_mode"]').value = (dev === 'tap') ? 0 : 1;
+		}
+
+		// auth
+		if (settings['auth']) {
+			const authMap = {
+				'md5': 0, 'sha1': 1, 'sha224': 2,
+				'sha256': 3, 'sha384': 4, 'sha512': 5
+			};
+			let val = settings['auth'].toLowerCase();
+			if (authMap.hasOwnProperty(val))
+				document.querySelector('[name="vpnc_ov_mdig"]').value = authMap[val];
+		}
+
+		// cipher
+		if (settings['cipher']) {
+			const cipherMap = {
+				'none': 0, 'des-cbc': 1, 'des-ede-cbc': 2, 'bf-cbc': 3,
+				'aes-128-cbc': 4, 'aes-192-cbc': 5, 'des-ede3-cbc': 6,
+				'desx-cbc': 7, 'aes-256-cbc': 8, 'camellia-128-cbc': 9,
+				'camellia-192-cbc': 10, 'camellia-256-cbc': 11,
+				'aes-128-gcm': 12, 'aes-192-gcm': 13, 'aes-256-gcm': 14,
+				'chacha20-poly1305': 15
+			};
+			let val = settings['cipher'].toLowerCase();
+			if (cipherMap.hasOwnProperty(val))
+				document.querySelector('[name="vpnc_ov_ciph"]').value = cipherMap[val];
+		}
+
+		// data-ciphers
+		if (settings['data-ciphers']) {
+			document.querySelector('[name="vpnc_ov_ncp_clist"]').value = settings['data-ciphers'];
+		} else if (settings['cipher']) {
+			document.querySelector('[name="vpnc_ov_ncp_clist"]').value = settings['cipher'];
+		}
+
+		// compression
+		if (settings['comp-lzo']) {
+			document.querySelector('[name="vpnc_ov_compress"]').value =
+				settings['comp-lzo'] === 'no' ? 1 : 2;
+			}
+		if (settings['lz4-v2']) {
+			document.querySelector('[name="vpnc_ov_compress"]').value = 4;
+		}
+		if (settings['compress']) {
+			if (settings['compress'].includes('lz4-v2'))
+				document.querySelector('[name="vpnc_ov_compress"]').value = 4;
+			else if (settings['compress'].includes('lz4'))
+				document.querySelector('[name="vpnc_ov_compress"]').value = 3;
+		}
+
+		// auth-user-pass
+		if (settings['auth-user-pass'] != undefined) {
+			document.querySelector('[name="vpnc_ov_auth"]').value = 1;
+		}
+
+		// TLS-Auth / TLS-Crypt
+		if (certBlocks['ta']) document.querySelector('[name="vpnc_ov_atls"]').value = 1;
+		if (certBlocks['tc']) document.querySelector('[name="vpnc_ov_atls"]').value = 2;
+		if (certBlocks['ctc2']) document.querySelector('[name="vpnc_ov_atls"]').value = 3;
+
+		if (certBlocks['ca']) document.querySelector('[name="ovpncli.ca.crt"]').value = certBlocks['ca'];
+		if (certBlocks['cert']) document.querySelector('[name="ovpncli.client.crt"]').value = certBlocks['cert'];
+		if (certBlocks['key']) document.querySelector('[name="ovpncli.client.key"]').value = certBlocks['key'];
+		if (certBlocks['ta']) document.querySelector('[name="ovpncli.ta.key"]').value = certBlocks['ta'];
+
+		if (certBlocks['tc']) document.querySelector('[name="ovpncli.ta.key"]').value = certBlocks['tc'];
+		if (certBlocks['ctc2']) document.querySelector('[name="ovpncli.ta.key"]').value = certBlocks['ctc2'];
+
+		change_vpnc_ov_auth();
+		change_vpnc_ov_atls();
+		change_vpnc_ov_mode();
+	};
+	reader.readAsText(file);
 }
 
 var arrHashes = ["cfg", "ssl"];
@@ -264,6 +551,362 @@ function getHash(){
 			return curHash;
 	}
 	return ('#'+arrHashes[0]);
+}
+
+function wg_pubkey(){
+	if (!login_safe())
+		return false;
+
+	if (document.form.vpnc_wg_if_private.value.length != 44) {
+		document.form.vpnc_wg_if_public.value = "";
+		return;
+	}
+
+	$j.post('/apply.cgi',
+	{
+		'action_mode': ' wg_action ',
+		'action': 'pubkey',
+		'privkey': document.form.vpnc_wg_if_private.value
+	},
+	function(response){
+		document.form.vpnc_wg_if_public.value = response;
+	});
+}
+
+function wg_genkey(){
+	if (!login_safe())
+		return false;
+
+	$j.post('/apply.cgi',
+	{
+		'action_mode': ' wg_action ',
+		'action': 'genkey'
+	},
+	function(response){
+		document.form.vpnc_wg_if_private.value = response;
+
+		$j.post('/apply.cgi',
+		{
+			'action_mode': ' wg_action ',
+			'action': 'pubkey',
+			'privkey': document.form.vpnc_wg_if_private.value
+		},
+		function(response){
+			document.form.vpnc_wg_if_public.value = response;
+		});
+	});
+	document.form.vpnc_wg_if_private.focus();
+}
+
+function wg_genpsk(){
+	if (!login_safe())
+		return false;
+
+	$j.post('/apply.cgi',
+	{
+		'action_mode': ' wg_action ',
+		'action': 'genpsk'
+	},
+	function(response){
+		document.form.vpnc_wg_if_preshared.value = response;
+	});
+	document.form.vpnc_wg_if_preshared.focus();
+}
+
+function wg_genhpk(){
+	if (!login_safe())
+		return false;
+
+	$j.post('/apply.cgi',
+	{
+		'action_mode': ' wg_action ',
+		'action': 'genkey'
+	},
+	function(response){
+		document.form.vpnc_awg_headerprotectionkey.value = response;
+	});
+	document.form.vpnc_awg_headerprotectionkey.focus();
+}
+
+async function loadJSON(fileName) {
+	const response = await fetch(fileName);
+	return await response.json();
+}
+
+function wg_conf_import() {
+	const fileInput = document.getElementById('wg_fileInput');
+	const file = fileInput.files[0];
+
+	if (!file) {
+		alert('Select file');
+		return;
+	}
+
+	if( fileInput.files[0].size > 8192) {
+		alert("File is too big");
+		return;
+	}
+
+	const reader = new FileReader();
+
+	reader.onload = function(e) {
+		const content = e.target.result;
+		var settings = {};
+
+		const lines = content.split('\n');
+		lines.forEach(line => {
+			line = line.trim();
+			if (!line || line.startsWith('#')) return;
+
+			const separatorIndex = line.indexOf('=');
+			if (separatorIndex > 0) {
+				const key = line.substring(0, separatorIndex).trim().toLowerCase();
+				const value = line.substring(separatorIndex + 1).trim();
+				settings[key] = value;
+			}
+		});
+
+		document.form.vpnc_wg_if_addr.value = "";
+		document.form.vpnc_wg_if_private.value = "";
+		document.form.vpnc_wg_if_preshared.value = "";
+		document.form.vpnc_wg_mtu.value = "1280";
+		document.form.vpnc_wg_peer_public.value = "";
+		document.form.vpnc_wg_peer_endpoint.value = "";
+		document.form.vpnc_wg_peer_port.value = "51820";
+		document.form.vpnc_wg_peer_keepalive.value = "25";
+		document.form.vpnc_wg_peer_allowedips.value = "0.0.0.0/0, ::/0";
+		document.form.vpnc_wg_if_dns.value = "";
+
+		if (settings.address) document.form.vpnc_wg_if_addr.value = settings.address;
+		if (settings.privatekey) document.form.vpnc_wg_if_private.value = settings.privatekey;
+		if (settings.presharedkey) document.form.vpnc_wg_if_preshared.value = settings.presharedkey;
+		wg_pubkey();
+		if (settings.mtu) document.form.vpnc_wg_mtu.value = settings.mtu;
+		if (settings.publickey) document.form.vpnc_wg_peer_public.value = settings.publickey;
+		if (settings.endpoint) {
+			const separatorIndex = settings.endpoint.lastIndexOf(':');
+			if (separatorIndex > 0) {
+				document.form.vpnc_wg_peer_endpoint.value = settings.endpoint.substring(0, separatorIndex);
+				document.form.vpnc_wg_peer_port.value = settings.endpoint.substring(separatorIndex + 1);
+			} else
+				document.form.vpnc_wg_peer_endpoint.value = settings.endpoint;
+		}
+		if (settings.persistentkeepalive) document.form.vpnc_wg_peer_keepalive.value = settings.persistentkeepalive;
+		if (settings.allowedips) document.form.vpnc_wg_peer_allowedips.value = settings.allowedips;
+		if (settings.dns) document.form.vpnc_wg_if_dns.value = settings.dns;
+
+		if (found_app_awg()) {
+			loadJSON('amneziawg.json')
+				.then(data => {
+					const fields = [
+						'jc', 'jmin', 'jmax',
+						'i1', 'i2', 'i3', 'i4', 'i5',
+						'h1', 'h2', 'h3', 'h4',
+						's1', 's2', 's3', 's4',
+						'contentpaddingaddition', 'headerprotectionkey',
+						'rekeyaftertime', 'rekeytimeout', 'rejectaftertime',
+						'keepalivetimeout', 'maxhandshakeattempts',
+						'randomtrailers', 'disablecookies'
+					];
+					const normalizeMap = {
+						'0': '0', 'off': '0',
+						'1': '1', 'on': '1'
+					};
+
+					fields.forEach(field => {
+						let value = settings[field] || data[0][field] || '';
+
+						if (field === 'randomtrailers' || field === 'disablecookies') {
+							value = normalizeMap[value] ?? '0';
+						}
+
+						document.form[`vpnc_awg_${field}`].value = value;
+					});
+				});
+		}
+	};
+	reader.readAsText(file);
+}
+
+function vpnc_access_control() {
+	// ===== clients list =====
+	let allowed_list, added_list, allowed, added, result, map
+
+	const ipmonitor = [<% get_static_client(); %>];
+
+	allowed_list = "<% nvram_get_x("", "vpnc_clients_allowed"); %>";
+	added_list = "<% nvram_get_x("", "vpnc_clients"); %>";
+
+	allowed = allowed_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.map(ip => ip);
+	added = added_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.filter(ip => !allowed.includes(ip))
+		.map(ip => ip);
+
+	const clients = [
+		...allowed.map(ip => ( {text: ip, checked: true } )),
+		...added.map(ip => ( {text: ip, checked: false } )),
+		...ipmonitor
+			.filter(ip => ip[0])
+			.filter(ip => !allowed.includes(ip[0]))
+			.filter(ip => !added.includes(ip[0]))
+			.map(item => ( {text: item[0], title: item[2] ?? '*', checked: false } )),
+	];
+
+	const sel_style = getComputedStyle(document.querySelector('select'));
+
+	$j('#vpnc_clients').multiSelectDropdown({
+		items: clients,
+		placeholder: "<#ZapretWORestrictions#>",
+		width: '318px',
+		allowDelete: true,
+		allowAdd: true,
+		addSuggestionText: '<#CTL_add#>',
+		removeSpaces: true,
+		allowedItems: '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$',
+		allowedAlert: '<#LANHostConfig_x_DDNS_alarm_9#>',
+		onChange: function(selected){
+			document.form.vpnc_clients_allowed.value = selected.join(',');
+			document.form.vpnc_clients.value = this.multiSelectDropdown('getAllItems')
+				.filter(item => !item.title)
+				.map(item => item.text)
+				.join(',');
+		}
+	}).css({
+		color: sel_style.color,
+		backgroundColor: sel_style.backgroundColor,
+		border: sel_style.border,
+		borderRadius: sel_style.borderRadius,
+		borderColor: sel_style.borderColor
+	});
+
+	// ===== ipset lists =====
+	if (!found_support_ipset())
+		return;
+
+	const excludeNames = new Set([
+		"nozapret", "nozapret6", "nozapret.list",
+		"vpn.remote", "vpn.exclude", "vpn.clients", "vpn.remote.list", "vpn.exclude.list",
+		"tor.remote", "tor.exclude", "tor.clients"
+	]);
+
+	allowed_list = "<% nvram_get_x("", "vpnc_ipset_allowed"); %>";
+	allowed = allowed_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.map(item => ({text: item, checked: true }));
+
+	map = new Map(
+		allowed.map(item => [item.text, {...item, title: ""}])
+	);
+
+	for (const item of IPSetList) {
+		if (excludeNames.has(item.name)) {
+			continue;
+		}
+
+		// russian word declension...
+		const title = item.entries
+			? `${item.entries} ${declOfNum(item.entries, ['<#Entries1#>', '<#Entries2#>', '<#Entries#>'])}`
+			: "";
+
+		if (map.has(item.name)) {
+			map.get(item.name).title = title;
+		} else {
+			map.set(item.name, {text: item.name, title, checked: false});
+		}
+	}
+
+	result = [...map.values()].sort((a, b) => {
+		if (a.checked !== b.checked) {
+			return a.checked ? -1 : 1;
+		}
+
+		const aUpper = a.text[0] === a.text[0].toUpperCase();
+		const bUpper = b.text[0] === b.text[0].toUpperCase();
+
+		if (aUpper !== bUpper) {
+			return aUpper ? -1 : 1;
+		}
+
+		return a.text.localeCompare(b.text);
+	});
+
+	$j('#vpnc_ipset').multiSelectDropdown({
+		items: result,
+		placeholder: "<#Select_menu_default#>",
+		width: '318px',
+		allowDelete: false,
+		allowAdd: false,
+		onChange: function(selected){
+			document.form.vpnc_ipset_allowed.value = selected.join(',');
+		}
+	}).css({
+		color: sel_style.color,
+		backgroundColor: sel_style.backgroundColor,
+		border: sel_style.border,
+		borderRadius: sel_style.borderRadius,
+		borderColor: sel_style.borderColor
+	});
+
+	allowed_list = "<% nvram_get_x("", "vpnc_ipset_exclude"); %>";
+	allowed = allowed_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.map(item => ({text: item, checked: true }));
+
+	map = new Map(
+		allowed.map(item => [item.text, {...item, title: ""}])
+	);
+
+	for (const item of IPSetList) {
+		if (excludeNames.has(item.name)) {
+			continue;
+		}
+
+		// russian word declension...
+		const title = item.entries
+			? `${item.entries} ${declOfNum(item.entries, ['<#Entries1#>', '<#Entries2#>', '<#Entries#>'])}`
+			: "";
+
+		if (map.has(item.name)) {
+			map.get(item.name).title = title;
+		} else {
+			map.set(item.name, {text: item.name, title, checked: false});
+		}
+	}
+
+	result = [...map.values()].sort((a, b) => {
+		if (a.checked !== b.checked) {
+			return a.checked ? -1 : 1;
+		}
+
+		const aUpper = a.text[0] === a.text[0].toUpperCase();
+		const bUpper = b.text[0] === b.text[0].toUpperCase();
+
+		if (aUpper !== bUpper) {
+			return aUpper ? -1 : 1;
+		}
+
+		return a.text.localeCompare(b.text);
+	});
+
+	$j('#vpnc_ipset_exclude').multiSelectDropdown({
+		items: result,
+		placeholder: "<#Select_menu_default#>",
+		width: '318px',
+		allowDelete: false,
+		allowAdd: false,
+		onChange: function(selected){
+			document.form.vpnc_ipset_exclude.value = selected.join(',');
+		}
+	}).css({
+		color: sel_style.color,
+		backgroundColor: sel_style.backgroundColor,
+		border: sel_style.border,
+		borderRadius: sel_style.borderRadius,
+		borderColor: sel_style.borderColor
+	});
 }
 
 </script>
@@ -368,15 +1011,22 @@ function getHash(){
                                 <tr>
                                     <th width="50%"><#VPNC_Type#></th>
                                     <td>
-                                        <select name="vpnc_type" class="input" onchange="change_vpnc_type();">
+                                        <select name="vpnc_type" id="vpnc_type" class="input" onchange="change_vpnc_type();">
                                             <option value="0" <% nvram_match_x("", "vpnc_type", "0","selected"); %>>PPTP</option>
                                             <option value="1" <% nvram_match_x("", "vpnc_type", "1","selected"); %>>L2TP (w/o IPSec)</option>
                                             <option value="2" <% nvram_match_x("", "vpnc_type", "2","selected"); %>>OpenVPN</option>
+                                            <option value="3" <% nvram_match_x("", "vpnc_type", "3","selected"); %>>Wireguard</option>
                                         </select>
                                         <span id="certs_hint" style="display:none" class="label label-warning"><#OVPN_Hint#></span>
                                     </td>
                                 </tr>
-                                <tr>
+                                <tr id="row_vpnc_ov_import" style="display:none">
+                                    <th width="50%" style="padding-bottom: 12px;"><#VPNC_WG_ImportConf#>:</th>
+                                    <td>
+                                        <input style="width: 320px" type="file" id="ov_fileInput" accept=".txt,.conf,.ovpn" name="vpnc_ov_import" onChange="ov_conf_import();" onclick="this.value=''">
+                                    </td>
+                                </tr>
+                                <tr id="vpnc_peer_row">
                                     <th><#VPNC_Peer#></th>
                                     <td>
                                         <input type="text" name="vpnc_peer" class="input" maxlength="256" size="32" value="<% nvram_get_x("", "vpnc_peer"); %>" onKeyPress="return is_string(this,event);"/>
@@ -390,6 +1040,99 @@ function getHash(){
                                         &nbsp;<span style="color:#888;">[ 1194 ]</span>
                                     </td>
                                 </tr>
+                                <tr id="row_vpnc_wg" style="display:none">
+                                    <td colspan="2" style="padding: 0px; padding: 0px; border: 0 none;">
+
+                                        <table width="100%" style="margin-bottom: 10px;">
+                                            <tr>
+                                                <th width="50%" style="padding-bottom: 12px;"><#VPNC_WG_ImportConf#>:</th>
+                                                <td>
+                                                    <input style="width: 320px" type="file" id="wg_fileInput" accept=".txt,.conf" name="vpnc_wg_import" onChange="wg_conf_import();" onclick="this.value=''">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#VPNC_Peer#></th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_peer_endpoint" class="input" maxlength="256" size="32" value="<% nvram_get_x("", "vpnc_wg_peer_endpoint"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    &nbsp;<span id="col_vpnc_wg_state" style="display:none" class="label label-success"><#Connected#></span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#OVPN_Port#></th>
+                                                <td>
+                                                    <input type="text" maxlength="5" size="5" name="vpnc_wg_peer_port" class="input" value="<% nvram_get_x("", "vpnc_wg_peer_port"); %>" onkeypress="return is_number(this,event);">
+                                                    &nbsp;<span style="color:#888;">[ 51820 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th width="50%"><#WG_Peer_Public_key#>:</th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_peer_public" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_wg_peer_public"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#VPNC_WG_KeepAlive#>:</th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_peer_keepalive" class="input" maxlength="5" size="32" value="<% nvram_get_x("", "vpnc_wg_peer_keepalive"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    &nbsp;<span style="color:#888;">[ 0..65535 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#VPNC_WG_AllowedIPS#>:</th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_peer_allowedips" class="input" maxlength="256" size="32" value="<% nvram_get_x("", "vpnc_wg_peer_allowedips"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    &nbsp;<span style="color:#888;">[ 0.0.0.0/0 ]</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <table width="100%" style="margin-bottom: -8px;">
+                                            <tr>
+                                                <th colspan="2" style="background-color: #E3E3E3;"><#t2IF#></th>
+                                            </tr>
+                                            <tr>
+                                                <th width="50%"><#VPNC_WG_Addresses#>:</th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_if_addr" class="input" maxlength="256" size="32" value="<% nvram_get_x("", "vpnc_wg_if_addr"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#WG_Private_key#>:</th>
+                                                <td>
+                                                    <input style="-webkit-text-security: disc;" onfocus="vpnc_wg_if_private.style='-webkit-text-security: unset;'" onblur="vpnc_wg_if_private.style='-webkit-text-security: disc;'; wg_pubkey();" type="text" name="vpnc_wg_if_private" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_wg_if_private"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    <input type="button" class="btn btn-mini" style="outline:0" onclick="wg_genkey();" value="<#CTL_refresh#>"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#WG_Public_key#>:</th>
+                                                <td>
+                                                    <input readonly type="text" name="vpnc_wg_if_public" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_wg_if_public"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    <input type="button" class="btn btn-mini" style="outline:0" onclick="document.form.vpnc_wg_if_public.select(); document.execCommand('copy');" value="<#CTL_copy#>"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#WG_Preshared_key#>:</th>
+                                                <td>
+                                                    <input style="-webkit-text-security: disc;" onfocus="vpnc_wg_if_preshared.style='-webkit-text-security: unset;'" onblur="vpnc_wg_if_preshared.style='-webkit-text-security: disc;';" type="text" name="vpnc_wg_if_preshared" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_wg_if_preshared"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    <input type="button" class="btn btn-mini" style="outline:0" onclick="wg_genpsk();" value="<#CTL_refresh#>"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#PPPConnection_x_PPPoEMTU_itemname#></th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_mtu" class="input" maxlength="5" size="32" value="<% nvram_get_x("", "vpnc_wg_mtu"); %>" onKeyPress="return is_number(this,event);"/>
+                                                    &nbsp;<span style="color:#888;">[ 1000..1420 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#PPPConnection_x_WANDNSServer_itemname#></th>
+                                                <td>
+                                                    <input type="text" name="vpnc_wg_if_dns" class="input" maxlength="256" size="32" value="<% nvram_get_x("", "vpnc_wg_if_dns"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
                                 <tr id="row_vpnc_ov_prot" style="display:none">
                                     <th><#OVPN_Prot#></th>
                                     <td>
@@ -517,16 +1260,16 @@ function getHash(){
                                 <tr id="row_vpnc_ov_ncp_clist" style="display:none">
                                     <th><#OVPN_NCP_clist#></th>
                                     <td>
-                                        <input type="text" maxlength="256" size="15" name="vpnc_ov_ncp_clist" class="input" style="width: 286px;" value="<% nvram_get_x("", "vpnc_ov_ncp_clist"); %>" onkeypress="return is_string(this,event);"/>
+                                        <input type="text" maxlength="256" size="15" name="vpnc_ov_ncp_clist" class="input" style="width: 310px;" value="<% nvram_get_x("", "vpnc_ov_ncp_clist"); %>" onkeypress="return is_string(this,event);"/>
                                     </td>
                                 </tr>
                                 <tr id="row_vpnc_ov_compress" style="display:none">
                                     <th><#OVPN_COMPRESS#></th>
                                     <td>
                                         <select name="vpnc_ov_compress" class="input">
-                                            <option value="0" <% nvram_match_x("", "vpnc_ov_compress", "0","selected"); %>><#btn_Disable#></option>
+                                            <option value="0" <% nvram_match_x("", "vpnc_ov_compress", "0","selected"); %>><#btn_Disable#> (*)</option>
                                             <option value="1" <% nvram_match_x("", "vpnc_ov_compress", "1","selected"); %>><#OVPN_COMPRESS_Item1#></option>
-                                            <option value="2" <% nvram_match_x("", "vpnc_ov_compress", "2","selected"); %>><#OVPN_COMPRESS_Item2#> (*)</option>
+                                            <option value="2" <% nvram_match_x("", "vpnc_ov_compress", "2","selected"); %>><#OVPN_COMPRESS_Item2#></option>
                                             <option value="3" <% nvram_match_x("", "vpnc_ov_compress", "3","selected"); %>><#OVPN_COMPRESS_Item3#></option>
                                             <option value="4" <% nvram_match_x("", "vpnc_ov_compress", "4","selected"); %>><#OVPN_COMPRESS_Item4#></option>
                                         </select>
@@ -556,11 +1299,272 @@ function getHash(){
                                     <td colspan="2" style="padding-bottom: 0px;">
                                         <a href="javascript:spoiler_toggle('spoiler_vpnc_ov_conf')"><span><#OVPN_User#></span></a>
                                         <div id="spoiler_vpnc_ov_conf" style="display:none;">
-                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.client.conf" style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.client.conf",""); %></textarea>
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.client.conf" style="resize: vertical; font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.client.conf",""); %></textarea>
                                         </div>
                                     </td>
                                 </tr>
                             </table>
+
+                            <table class="table" id="tbl_vpnc_amnezia" style="display: none">
+                                <tr>
+                                    <th colspan="2" style="background-color: #E3E3E3;"><#AmneziaWG_Params#></th>
+                                </tr>
+                                <tr>
+                                    <th width="50%"><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,26,5);">Disable cookies</a>:</th>
+                                    <td>
+                                        <select name="vpnc_awg_disablecookies" id="vpnc_awg_disablecookies" class="input">
+                                            <option value="0" <% nvram_match_x("", "vpnc_awg_disablecookies", "0","selected"); %>><#CTL_Disabled#></option>
+                                            <option value="1" <% nvram_match_x("", "vpnc_awg_disablecookies", "1","selected"); %>><#CTL_Enabled#></option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding-left: 0px; padding-right: 0px">
+                                        <a href="javascript:spoiler_toggle('spoiler_vpnc_amnezia_junk')"><span style="padding-left: 8px"><#AmneziaWG_JunkPackets#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <table width="100%" id="spoiler_vpnc_amnezia_junk" style="display: none; border: 0px">
+                                            <tr>
+                                                <th style="border: 0px" width="50%">Jc, <#AmneziaWG_Jc#>:</th>
+                                                <td style="border: 0px">
+                                                    <input name="vpnc_awg_jc" value="<% nvram_get_x("", "vpnc_awg_jc"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..128 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Jmin, <#AmneziaWG_Jmin#>:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_jmin" value="<% nvram_get_x("", "vpnc_awg_jmin"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..1024 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Jmax, <#AmneziaWG_Jmax#>:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_jmax" value="<% nvram_get_x("", "vpnc_awg_jmax"); %>">
+                                                    &nbsp;<span style="color:#888;">[ Jmax > Jmin ]</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding-left: 0px; padding-right: 0px">
+                                        <a href="javascript:spoiler_toggle('spoiler_vpnc_amnezia_headers')"><span style="padding-left: 8px"><#AmneziaWG_HeadersMod#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <table width="100%" id="spoiler_vpnc_amnezia_headers" style="display: none; border: 0px">
+                                            <tr>
+                                                <th style="border: 0px" width="50%"><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,26,3);">Header protection key</a>:</th>
+                                                <td style="border: 0px">
+                                                    <input style="-webkit-text-security: disc;" onfocus="vpnc_awg_headerprotectionkey.style='-webkit-text-security: unset;'" onblur="vpnc_awg_headerprotectionkey.style='-webkit-text-security: disc;';" type="text" name="vpnc_awg_headerprotectionkey" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_awg_headerprotectionkey"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    <input type="button" class="btn btn-mini" style="outline:0" onclick="wg_genhpk();" value="<#CTL_refresh#>"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Content padding addition:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_contentpaddingaddition" value="<% nvram_get_x("", "vpnc_awg_contentpaddingaddition"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..100 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,26,4);">Random trailers</a>:</th>
+                                                <td>
+                                                    <select name="vpnc_awg_randomtrailers" id="vpnc_awg_randomtrailers" class="input">
+                                                        <option value="0" <% nvram_match_x("", "vpnc_awg_randomtrailers", "0","selected"); %>><#CTL_Disabled#></option>
+                                                        <option value="1" <% nvram_match_x("", "vpnc_awg_randomtrailers", "1","selected"); %>><#CTL_Enabled#></option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Init header, H1:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_h1" value="<% nvram_get_x("", "vpnc_awg_h1"); %>">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Response header, H2:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_h2" value="<% nvram_get_x("", "vpnc_awg_h2"); %>">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Cookie header, H3:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_h3" value="<% nvram_get_x("", "vpnc_awg_h3"); %>">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Data header, H4:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_h4" value="<% nvram_get_x("", "vpnc_awg_h4"); %>">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Init random increment, S1:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_s1" value="<% nvram_get_x("", "vpnc_awg_s1"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..256 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Response random increment, S2:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_s2" value="<% nvram_get_x("", "vpnc_awg_s2"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..256 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Cookie random increment, S3:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_s3" value="<% nvram_get_x("", "vpnc_awg_s3"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..256 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Data random increment, S4:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_s4" value="<% nvram_get_x("", "vpnc_awg_s4"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..32 ]</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding-left: 0px; padding-right: 0px">
+                                        <a href="javascript:spoiler_toggle('spoiler_vpnc_amnezia_i1')"><span style="padding-left: 8px"><#AmneziaWG_ObfuscationProto#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <table width="100%" id="spoiler_vpnc_amnezia_i1" style="display: none; border: 0px;">
+                                            <tr>
+                                                <th style="border: 0px" width="50%"><#AmneziaWG_Obfuscation#> I1:</th>
+                                                <td style="border: 0px">
+                                                    <input style="width: 310px" type="text" name="vpnc_awg_i1" class="input" maxlength="4096" size="32" value="<% nvram_get_x("", "vpnc_awg_i1"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#AmneziaWG_Obfuscation#> I2:</th>
+                                                <td>
+                                                    <input style="width: 310px;" type="text" name="vpnc_awg_i2" class="input" maxlength="512" size="32" value="<% nvram_get_x("", "vpnc_awg_i2"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#AmneziaWG_Obfuscation#> I3:</th>
+                                                <td>
+                                                    <input style="width: 310px;" type="text" name="vpnc_awg_i3" class="input" maxlength="512" size="32" value="<% nvram_get_x("", "vpnc_awg_i3"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#AmneziaWG_Obfuscation#> I4:</th>
+                                                <td>
+                                                    <input style="width: 310px;" type="text" name="vpnc_awg_i4" class="input" maxlength="512" size="32" value="<% nvram_get_x("", "vpnc_awg_i4"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><#AmneziaWG_Obfuscation#> I5:</th>
+                                                <td>
+                                                    <input style="width: 310px;" type="text" name="vpnc_awg_i5" class="input" maxlength="512" size="32" value="<% nvram_get_x("", "vpnc_awg_i5"); %>" onKeyPress="return is_string(this,event);"/>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding: 8px 0 0 0">
+                                        <a href="javascript:spoiler_toggle('spoiler_vpnc_amnezia_timeouts')"><span style="padding-left: 8px"><#AmneziaWG_Timeouts#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <table width="100%" id="spoiler_vpnc_amnezia_timeouts" style="display: none; border: 0px">
+
+                                            <tr>
+                                                <th style="border: 0px" width="50%">Rekey after time, <#Second#>:</th>
+                                                <td style="border: 0px">
+                                                    <input name="vpnc_awg_rekeyaftertime" value="<% nvram_get_x("", "vpnc_awg_rekeyaftertime"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..300 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Rekey timeout, <#Second#>:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_rekeytimeout" value="<% nvram_get_x("", "vpnc_awg_rekeytimeout"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..300 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Reject after time, <#Second#>:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_rejectaftertime" value="<% nvram_get_x("", "vpnc_awg_rejectaftertime"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..300 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Keepalive timeout, <#Second#>:</th>
+                                                <td>
+                                                    <input name="vpnc_awg_keepalivetimeout" value="<% nvram_get_x("", "vpnc_awg_keepalivetimeout"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..300 ]</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th style="padding-bottom: 0px">Max handshake attempts:</th>
+                                                <td style="padding-bottom: 0px">
+                                                    <input name="vpnc_awg_maxhandshakeattempts" value="<% nvram_get_x("", "vpnc_awg_maxhandshakeattempts"); %>">
+                                                    &nbsp;<span style="color:#888;">[ 0..300 ]</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <table class="table" id="tbl_vpnc_access_control" style="margin-bottom: 10px; display: none">
+                                <tr>
+                                    <th colspan="2" style="background-color: #E3E3E3;"><#VPNC_AccessControl#></th>
+                                </tr>
+                                <tr>
+                                    <th width="50%"><#VPNC_ClientsList#>:</th>
+                                    <td>
+                                        <span id="vpnc_clients"></span>
+                                        <input type="hidden" name="vpnc_clients" value="<% nvram_get_x("", "vpnc_clients"); %>">
+                                        <input type="hidden" name="vpnc_clients_allowed" value="<% nvram_get_x("", "vpnc_clients_allowed"); %>">
+                                    </td>
+                                </tr>
+                                <tr id="row_vpnc_ipset" style="display: none">
+                                    <th width="50%"><#VPNC_IpsetList#>:</th>
+                                    <td>
+                                        <span id="vpnc_ipset"></span>
+                                        <input type="hidden" name="vpnc_ipset_allowed" value="<% nvram_get_x("", "vpnc_ipset_allowed"); %>">
+                                    </td>
+                                </tr>
+
+                                <tr id="row_vpnc_ipset_exclude" style="display: none">
+                                    <th width="50%"><#VPNC_IpsetExcludeList#>:</th>
+                                    <td>
+                                        <span id="vpnc_ipset_exclude"></span>
+                                        <input type="hidden" name="vpnc_ipset_exclude" value="<% nvram_get_x("", "vpnc_ipset_exclude"); %>">
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td colspan="2">
+                                        <a href="javascript:spoiler_toggle('spoiler_vpnc_remote_network')"><span><#VPNC_RNet_List#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <div id="spoiler_vpnc_remote_network" style="display: none">
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="65536" class="span12" name="scripts.vpnc_remote_network.list" style="font-family:'Courier New'; font-size:12px; resize:vertical;"><% nvram_dump("scripts.vpnc_remote_network.list",""); %></textarea>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">
+                                        <a href="javascript:spoiler_toggle('spoiler_vpnc_exclude_network')"><span><#VPNC_ExcludeList#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <div id="spoiler_vpnc_exclude_network" style="display: none">
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="65536" class="span12" name="scripts.vpnc_exclude_network.list" style="font-family:'Courier New'; font-size:12px; resize:vertical"><% nvram_dump("scripts.vpnc_exclude_network.list",""); %></textarea>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr id="row_dipset" style="padding-bottom: 0px; display: none">
+                                    <td colspan="2">
+                                        <a href="javascript:spoiler_toggle('spoiler_dipset')"><span><#CustomConf#> "dnsmasq.ipset"</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <div id="spoiler_dipset" style="display:none;">
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="65536" class="span12" name="dnsmasq.dnsmasq.ipset" style="font-family:'Courier New'; font-size:12px; resize: vertical; margin-bottom: 0px"><% nvram_dump("dnsmasq.dnsmasq.ipset",""); %></textarea>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
                             <table class="table" id="tbl_vpnc_server">
                                 <tr>
                                     <th colspan="2" style="background-color: #E3E3E3;"><#VPNC_VPNS#></th>
@@ -576,10 +1580,10 @@ function getHash(){
                                         </select>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <th><#VPNC_PDNS#></th>
+                                <tr id="vpnc_get_dns">
+                                    <th id="vpnc_use_dns"><#VPNC_PDNS#></th>
                                     <td>
-                                        <select name="vpnc_pdns" class="input">
+                                        <select name="vpnc_pdns" class="input" style="width: 320px;">
                                             <option value="0" <% nvram_match_x("", "vpnc_pdns", "0","selected"); %>><#checkbox_No#></option>
                                             <option value="1" <% nvram_match_x("", "vpnc_pdns", "1","selected"); %>><#VPNC_PDNS_Item1#></option>
                                             <option value="2" <% nvram_match_x("", "vpnc_pdns", "2","selected"); %>><#VPNC_PDNS_Item2#></option>
@@ -589,17 +1593,25 @@ function getHash(){
                                 <tr>
                                     <th><#VPNC_DGW#></th>
                                     <td>
-                                        <select name="vpnc_dgw" class="input">
+                                        <select name="vpnc_dgw" class="input" style="width: 320px;">
                                             <option value="0" <% nvram_match_x("", "vpnc_dgw", "0","selected"); %>><#checkbox_No#></option>
                                             <option value="1" <% nvram_match_x("", "vpnc_dgw", "1","selected"); %>><#checkbox_Yes#></option>
                                         </select>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td colspan="2" style="padding-bottom: 0px;">
-                                        <a href="javascript:spoiler_toggle('spoiler_script')"><span><#RunPostVPNC#></span></a>
+                                <tr id="row_vpnc_server_script" style="display: none">
+                                    <td colspan="2">
+                                        <a href="javascript:spoiler_toggle('spoiler_script')"><span><#RunPostVPNC#></span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
                                         <div id="spoiler_script" style="display:none;">
-                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="scripts.vpnc_server_script.sh" style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("scripts.vpnc_server_script.sh",""); %></textarea>
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="scripts.vpnc_server_script.sh" style="font-family:'Courier New'; font-size:12px; resize:vertical;"><% nvram_dump("scripts.vpnc_server_script.sh",""); %></textarea>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr id="row_vpnc_post_script" style="display: none">
+                                    <td colspan="2">
+                                        <a href="javascript:spoiler_toggle('spoiler_post_script')"><span><#ZapretPostScript#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <div id="spoiler_post_script" style="display:none;">
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="scripts.vpnc_post_script.sh" style="font-family:'Courier New'; font-size:12px; resize:vertical;"><% nvram_dump("scripts.vpnc_post_script.sh",""); %></textarea>
                                         </div>
                                     </td>
                                 </tr>
@@ -611,8 +1623,8 @@ function getHash(){
                                 <tr>
                                     <th width="50%"><#VPNC_RNet#></th>
                                     <td>
-                                        <input type="text" maxlength="15" size="14" name="vpnc_rnet" style="width: 94px;" value="<% nvram_get_x("", "vpnc_rnet"); %>" onKeyPress="return is_ipaddr(this,event);" />&nbsp;/
-                                        <input type="text" maxlength="15" size="14" name="vpnc_rmsk" style="width: 94px;" value="<% nvram_get_x("", "vpnc_rmsk"); %>" onKeyPress="return is_ipaddr(this,event);" />
+                                        <input type="text" maxlength="15" size="14" name="vpnc_rnet" style="width: 145px;" value="<% nvram_get_x("", "vpnc_rnet"); %>" onKeyPress="return is_ipaddr(this,event);" />&nbsp;/
+                                        <input type="text" maxlength="15" size="14" name="vpnc_rmsk" style="width: 144px;" value="<% nvram_get_x("", "vpnc_rmsk"); %>" onKeyPress="return is_ipaddr(this,event);" />
                                     </td>
                                 </tr>
                             </table>
@@ -628,25 +1640,25 @@ function getHash(){
                                 <tr>
                                     <td style="padding-bottom: 0px; border-top: 0 none;">
                                         <span class="caption-bold">ca.crt (Root CA Certificate):</span>
-                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.ca.crt" style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.ca.crt",""); %></textarea>
+                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.ca.crt" style="resize: vertical; font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.ca.crt",""); %></textarea>
                                     </td>
                                 </tr>
                                 <tr id="row_client_crt">
                                     <td style="padding-bottom: 0px; border-top: 0 none;">
                                         <span class="caption-bold">client.crt (Client Certificate):</span>
-                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.client.crt" style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.client.crt",""); %></textarea>
+                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.client.crt" style="resize: vertical; font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.client.crt",""); %></textarea>
                                     </td>
                                 </tr>
                                 <tr id="row_client_key">
                                     <td style="padding-bottom: 0px; border-top: 0 none;">
                                         <span class="caption-bold">client.key (Client Private Key) - secret:</span>
-                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.client.key" style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.client.key",""); %></textarea>
+                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.client.key" style="resize: vertical; font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.client.key",""); %></textarea>
                                     </td>
                                 </tr>
                                 <tr id="row_ta_key">
                                     <td style="padding-bottom: 0px; border-top: 0 none;">
                                         <span class="caption-bold">ta.key/tc.key(ctc2.key) (TLS Auth/Crypt(Crypt-v2) Key) - secret:</span>
-                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.ta.key" style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.ta.key",""); %></textarea>
+                                        <textarea rows="4" wrap="off" spellcheck="false" maxlength="8192" class="span12" name="ovpncli.ta.key" style="resize: vertical; font-family:'Courier New'; font-size:12px;"><% nvram_dump("ovpncli.ta.key",""); %></textarea>
                                     </td>
                                 </tr>
                             </table>

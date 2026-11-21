@@ -2626,6 +2626,18 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_vpncli = 0;
 #endif
+#if defined(SUPPORT_IPSET)
+	int found_support_ipset = 1;
+#else
+	int found_support_ipset = 0;
+#endif
+#if defined(APP_AMNEZIAWG)
+	int found_app_wg = 1;
+	int found_app_awg = 1;
+#else
+	int found_app_wg = 0;
+	int found_app_awg = 0;
+#endif
 #if defined(USE_IPV6)
 	int has_ipv6 = 1;
 #else
@@ -2809,6 +2821,9 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function found_app_frp() { return %d;}\n"
 		"function found_app_vpnsvr() { return %d;}\n"
 		"function found_app_vpncli() { return %d;}\n"
+		"function found_support_ipset() { return %d;}\n"
+		"function found_app_wg() { return %d;}\n"
+		"function found_app_awg() { return %d;}\n"
 		"function found_app_smartdns() { return %d;}\n"
 		"function found_app_adguardhome() { return %d;}\n",
 		found_utl_hdparm,
@@ -2844,6 +2859,9 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_frp,
 		found_app_vpnsvr,
 		found_app_vpncli,
+		found_support_ipset,
+		found_app_wg,
+		found_app_awg,
 		found_app_smartdns,
 		found_app_adguardhome
 	);
@@ -2977,6 +2995,72 @@ openssl_util_hook(int eid, webs_t wp, int argc, char **argv)
 	websWrite(wp, "function openssl_util_found() { return %d;}\n", has_openssl_util);
 	return 0;
 }
+
+#if defined(APP_AMNEZIAWG)
+#define VPN_SERVER_LEASE_FILE "/tmp/vpns.leases"
+#define MAX_CLIENTS_NUM (50)
+void
+leases_wireguard_server(void)
+{
+    if (nvram_get_int("vpns_enable") == 0 || nvram_get_int("vpns_type") != 3)
+        return;
+
+    FILE *fp, *fp_leases;
+    char command[256], result[256];
+
+    if ((fp_leases = fopen(VPN_SERVER_LEASE_FILE, "w")) == NULL) {
+        return;
+    }
+
+    int clients_count = nvram_get_int("vpns_num_x");
+    if (clients_count > MAX_CLIENTS_NUM) {
+        clients_count = MAX_CLIENTS_NUM;
+    }
+
+    snprintf(command, sizeof(command), "/usr/sbin/wg show '%s' dump", IFNAME_SERVER_WG);
+    if ((fp = popen(command, "r")) == NULL) {
+        return;
+    }
+
+    while (fgets(result, sizeof(result), fp)) {
+        for (int i = 0; i < clients_count; i++) {
+            char acl_user_var[32], acl_public_var[44];
+            snprintf(acl_user_var, sizeof(acl_user_var), "vpns_user_x%d", i);
+            snprintf(acl_public_var, sizeof(acl_public_var), "vpns_public_x%d", i);
+
+            char *acl_user = nvram_safe_get(acl_user_var);
+            char *acl_public = nvram_safe_get(acl_public_var);
+
+            if (!acl_user || !acl_public || !strstr(result, acl_public)) {
+                continue;
+            }
+
+            char *tokens[8], *saveptr;
+            int token_count = 0;
+            char *token = strtok_r(result, "\t", &saveptr);
+
+            // <public-key> <preshared-key> <endpoint> <allowed-ips> <latest-handshake> <transfer-rx> <transfer-tx> <persistent-keepalive>
+            while (token && token_count < 8) {
+                tokens[token_count++] = token;
+                token = strtok_r(NULL, "\t", &saveptr);
+            }
+
+            // Если <latest-handshake> равен 0 - пропускаем
+            if (!atoi(tokens[4])) {
+                continue;
+            }
+
+            if (token_count >= 7) {
+                fprintf(fp_leases, "%s %s %s %s %s %s\n",
+                    tokens[4], tokens[3], tokens[2], acl_user, tokens[5], tokens[6]);
+            }
+        }
+    }
+
+    fclose(fp_leases);
+    pclose(fp);
+}
+#endif
 
 static int
 openvpn_srv_cert_hook(int eid, webs_t wp, int argc, char **argv)
@@ -3559,6 +3643,49 @@ apply_cgi(const char *url, webs_t wp)
 		websRedirect(wp, current_url);
 		return 0;
 	}
+#if defined(APP_AMNEZIAWG)
+	else if (!strcmp(value, " wg_action "))
+	{
+		if (!get_login_safe())
+			return 0;
+
+		FILE *fp;
+		char command[256];
+		char result[256];
+		char *action = websGetVar(wp, "action", "");
+		char *privkey = websGetVar(wp, "privkey", "");
+
+		if (strcmp(action, "genkey") == 0) {
+			snprintf(command, sizeof(command), "/usr/sbin/wg genkey");
+		} else
+		if (strcmp(action, "genpsk") == 0) {
+			snprintf(command, sizeof(command), "/usr/sbin/wg genpsk");
+		} else
+		if (strcmp(action, "pubkey") == 0) {
+			snprintf(command, sizeof(command), "echo '%s' | /usr/sbin/wg pubkey", privkey);
+		} else
+			return 0;
+
+		if ((fp = popen(command, "r")) == NULL) {
+			return 1;
+		}
+		fgets(result, sizeof(result), fp);
+		pclose(fp);
+
+		if (*result) websWrite(wp, result);
+		return 0;
+	}
+	else if (!strcmp(value, " ExportWGConf "))
+	{
+		char *common_name = websGetVar(wp, "common_name", "");
+		if (get_login_safe() && strlen(common_name) > 0) {
+			doSystem("/usr/bin/wgs.sh export '%s'", common_name);
+			do_file("/tmp/client-wg.conf", wp);
+			unlink("/tmp/client-wg.conf");
+		}
+		return 0;
+	}
+#endif
 	else if (!strcmp(value, " ClearLog "))
 	{
 		// current only syslog implement this button

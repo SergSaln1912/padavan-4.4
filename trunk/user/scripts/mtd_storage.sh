@@ -693,6 +693,97 @@ EOF
 			chmod 644 "$user_sswan_secrets"
 		fi
 	fi
+	# amneziawg files (ng-port)
+	if [ -s /lib/modules/$(uname -r)/kernel/net/amneziawg/amneziawg.ko ] ; then
+		if [ ! -f "$dir_storage/vpnc_post_script.sh" ] ; then
+			cat > "$dir_storage/vpnc_post_script.sh" <<'EOF_AWG'
+#!/bin/sh
+### Custom user script
+### Called after starting Wireguard VPN client
+### $1         - action: start/stop/restart/reload/update
+### $IF_NAME   - interface name
+### $TABLE     - table contains default route to $IF_NAME
+### $PREF_WG   - number of rules for $TABLE, marked $FWMARK
+###              clears up when stopping/restarting
+### $PREF_MAIN - number of rules before the $TABLE, route to main
+###              clears up when stopping/restarting
+
+post_start()
+{
+  return 0
+}
+
+post_stop()
+{
+  return 0
+}
+
+post_reload()
+{
+  # when update ipset, fw
+  return 0
+}
+
+post_update()
+{
+  # when update fw
+  return 0
+}
+
+post_watchdog()
+{
+  # when watchdog launched
+  return 0
+}
+
+case "$1" in
+  start)
+    post_start
+  ;;
+
+  stop)
+    post_stop
+  ;;
+
+  reload)
+    post_reload
+  ;;
+
+  update)
+    post_update
+  ;;
+
+  watchdog)
+    post_watchdog
+  ;;
+esac
+EOF_AWG
+			chmod 755 "$dir_storage/vpnc_post_script.sh"
+		fi
+		if [ ! -f "$dir_storage/vpnc_remote_network.list" ] ; then
+			cat > "$dir_storage/vpnc_remote_network.list" <<'EOF_AWG'
+### List of IP addresses and networks accessible through the VPN
+
+# telegram
+5.28.128.0/18
+91.105.192.0/23
+91.108.4.0/22
+91.108.8.0/21
+91.108.16.0/21
+91.108.56.0/22
+95.161.64.0/20
+149.154.160.0/20
+185.76.151.0/24
+EOF_AWG
+			chmod 644 "$dir_storage/vpnc_remote_network.list"
+		fi
+		if [ ! -f "$dir_storage/vpnc_exclude_network.list" ] ; then
+			cat > "$dir_storage/vpnc_exclude_network.list" <<'EOF_AWG'
+### List of IP addresses and networks excluded from VPN routing
+EOF_AWG
+			chmod 644 "$dir_storage/vpnc_exclude_network.list"
+		fi
+	fi
 	# create zapret files
 	if [ -x "/usr/bin/zapret.sh" ]; then
 		/usr/bin/zapret.sh >/dev/null

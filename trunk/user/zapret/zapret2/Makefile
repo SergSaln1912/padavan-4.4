@@ -10,7 +10,8 @@ CFLAGS += -ffunction-sections -fdata-sections -fvisibility=hidden
 LDFLAGS += -Wl,--gc-sections
 
 all: download_test extract_test
-	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
+	PKG_CONFIG_LIBDIR=$(STAGEDIR)/lib/pkgconfig PKG_CONFIG_PATH=$(STAGEDIR)/lib/pkgconfig \
+		$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
 
 download_test:
 	( if [ ! -f $(SRC_NAME).tar.gz ]; then \

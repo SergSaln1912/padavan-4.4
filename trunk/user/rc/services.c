@@ -522,6 +522,36 @@ void restart_wireguard(void){
 }
 #endif
 
+#if defined(APP_ZAPRET)
+int is_zapret_run(void){
+	if (check_if_file_exist("/usr/bin/nfqws") || check_if_file_exist("/usr/bin/nfqws2"))
+	{
+		if (pids("zapret"))
+			return 1;
+	}
+	return 0;
+}
+
+void stop_zapret(void){
+	eval("/usr/bin/zapret.sh", "stop");
+}
+
+void start_zapret(void){
+	if (!get_ap_mode() && nvram_get_int("zapret_enable") == 1)
+		eval("/usr/bin/zapret.sh", "start");
+}
+
+void restart_zapret(void){
+	stop_zapret();
+	start_zapret();
+}
+
+void reload_zapret(void){
+	if (!get_ap_mode() && nvram_get_int("zapret_enable") == 1)
+		eval("/usr/bin/zapret.sh", "reload");
+}
+#endif
+
 #if defined(APP_ADBYBY)
 void stop_adbyby(void){
 	eval("/usr/bin/adbyby.sh","stop");
@@ -780,6 +810,9 @@ start_services_once(int is_ap_mode)
 	start_infosvr();
 
 	if (!is_ap_mode) {
+#if defined(APP_ZAPRET)
+		start_zapret();
+#endif
 		if (!is_upnp_run())
 			start_upnp();
 		

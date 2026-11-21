@@ -319,7 +319,7 @@ function zapret_strategy_change(o, v) {
     <input type="hidden" name="current_page" value="Advanced_Services_Content.asp">
     <input type="hidden" name="next_page" value="">
     <input type="hidden" name="next_host" value="">
-    <input type="hidden" name="sid_list" value="LANHostConfig;General;Storage;">
+    <input type="hidden" name="sid_list" value="ZAPRET;">
     <input type="hidden" name="group_id" value="">
     <input type="hidden" name="action_mode" value="">
     <input type="hidden" name="action_script" value="">

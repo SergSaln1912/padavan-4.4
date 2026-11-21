@@ -693,6 +693,10 @@ EOF
 			chmod 644 "$user_sswan_secrets"
 		fi
 	fi
+	# create zapret files
+	if [ -x "/usr/bin/zapret.sh" ]; then
+		/usr/bin/zapret.sh >/dev/null
+	fi
 }
 
 case "$1" in

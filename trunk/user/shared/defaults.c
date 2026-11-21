@@ -843,6 +843,15 @@ struct nvram_pair router_defaults[] = {
 	{ "reboot_schedule_enable", "0" },
 	{ "reboot_schedule", "00000000000" },
 
+#if defined (APP_ZAPRET)
+	{ "zapret_enable", "0" },
+	{ "zapret_iface", "" },
+	{ "zapret_log", "0" },
+	{ "zapret_clients", "192.168.1.0/24,10.8.0.0/24" },
+	{ "zapret_clients_allowed", "" },
+	{ "zapret_ipset_exclude", "" },
+#endif
+
 #if defined(APP_WIREGUARD)
 	/*WIREGUARD*/
 	{ "wireguard_enable", "0" },

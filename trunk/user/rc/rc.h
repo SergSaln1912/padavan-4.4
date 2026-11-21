@@ -600,6 +600,13 @@ void stop_wireguard(void);
 void start_wireguard(void);
 void restart_wireguard(void);
 #endif
+#if defined(APP_ZAPRET)
+int is_zapret_run(void);
+void stop_zapret(void);
+void start_zapret(void);
+void restart_zapret(void);
+void reload_zapret(void);
+#endif
 #if defined(APP_SMARTDNS)
 void stop_smartdns(void);
 void start_smartdns(void);

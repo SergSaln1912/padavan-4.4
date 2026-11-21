@@ -102,6 +102,7 @@ typedef u_int8_t u8;
 #define EVM_RESTART_DDNSTO		(1ULL << 60)
 #define EVM_RESTART_ALDRIVER	(1ULL << 61)
 #define EVM_RESTART_WIREGUARD	(1ULL << 62)
+#define EVM_RESTART_ZAPRET		(1ULL << 16)
 #define EVM_RESTART_SQM		    (1ULL << 63)
 
 #define EVM_RESTART_REBOOT		(1ULL << 64)
@@ -166,6 +167,7 @@ typedef u_int8_t u8;
 #define EVT_RESTART_DDNSTO     	2
 #define EVT_RESTART_ALDRIVER    2
 #define EVT_RESTART_WIREGUARD   2
+#define EVT_RESTART_ZAPRET		1
 #define EVT_RESTART_SQM			2
 #define EVT_RESTART_ALIDDNS		2
 #define EVT_RESTART_FRP      	2

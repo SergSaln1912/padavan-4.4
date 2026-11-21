@@ -721,6 +721,8 @@ ej_dump(int eid, webs_t wp, int argc, char **argv)
 		snprintf(filename, sizeof(filename), "%s/%s", STORAGE_SCRIPTS_DIR, file+8);
 	else if (strncmp(file, "crontab.", 8)==0)
 		snprintf(filename, sizeof(filename), "%s/%s", STORAGE_CRONTAB_DIR, nvram_safe_get("http_username"));
+	else if (strncmp(file, "zapretc.", 8)==0)
+		snprintf(filename, sizeof(filename), "%s/%s", STORAGE_ZAPRET_DIR, file+8);
 	else
 		snprintf(filename, sizeof(filename), "%s/%s", "/tmp", file);
 
@@ -913,6 +915,14 @@ validate_asp_apply(webs_t wp, int sid)
 			else if (!strncmp(v->name, "httpssl.", 8)) {
 				if (write_textarea_to_file(value, STORAGE_HTTPSSL_DIR, file_name))
 					restart_needed_bits |= event_mask;
+			}
+#endif
+#if defined(APP_ZAPRET)
+			else if (!strncmp(v->name, "zapretc.", 8)) {
+				if (write_textarea_to_file(value, STORAGE_ZAPRET_DIR, file_name)) {
+					restart_needed_bits |= event_mask;
+					need_mtd_write = 1;
+				}
 			}
 #endif
 #if defined(APP_OPENVPN)
@@ -2596,6 +2606,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_wireguard = 0;
 #endif
+#if defined(APP_ZAPRET)
+	int found_app_zapret = 1;
+#else
+	int found_app_zapret = 0;
+#endif
 #if defined(APP_FRP)
 	int found_app_frp = 1;
 #else
@@ -2783,6 +2798,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function found_app_shadowsocks() { return %d;}\n"
 		"function found_app_sqm() { return %d;}\n"
 		"function found_app_wireguard() { return %d;}\n"
+		"function found_app_zapret() { return %d;}\n"
 		"function found_app_xupnpd() { return %d;}\n"
 		"function found_app_mentohust() { return %d;}\n"
 		"function found_app_adbyby() { return %d;}\n"
@@ -2817,6 +2833,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_shadowsocks,
 		found_app_sqm,
 		found_app_wireguard,
+		found_app_zapret,
 		found_app_xupnpd,
 		found_app_mentohust,
 		found_app_adbyby,

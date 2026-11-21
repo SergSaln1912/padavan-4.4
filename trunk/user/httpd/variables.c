@@ -1023,6 +1023,36 @@
 		};
 #endif
 
+#if defined(APP_ZAPRET)
+	struct variable variables_ZAPRET[] = {
+			{"zapret_enable", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapret_iface", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapret_log", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapret_strategy", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapret_clients", "", NULL, FALSE},
+			{"zapret_clients_allowed", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapret_ipset_exclude", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.post_script.sh", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy0", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy1", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy2", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy3", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy4", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy5", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy6", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy7", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy8", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.strategy9", "File", NULL, EVM_RESTART_ZAPRET},
+			{"zapretc.auto.list", "File", NULL, FALSE},
+			{"zapretc.user.list", "File", NULL, FALSE},
+			{"zapretc.exclude.list", "File", NULL, FALSE},
+			{"zapretc.ipset.list", "File", NULL, FALSE},
+			{"zapretc.ipset-exclude.list", "File", NULL, EVM_RESTART_ZAPRET},
+			{0,0,0,0}
+		};
+#endif
+
 #if defined(APP_WIREGUARD)
 	struct variable variables_WIREGUARD[] = {
 			{"wireguard_enable", "", NULL, EVM_RESTART_WIREGUARD},
@@ -1370,6 +1400,9 @@
 #if defined(APP_WIREGUARD)
 		{"WIREGUARD",		variables_WIREGUARD},
 #endif
+#if defined(APP_ZAPRET)
+		{"ZAPRET",		variables_ZAPRET},
+#endif
 #if defined(APP_SQM)
 		{"SqmConf",		variables_SqmConf},
 #endif
@@ -1492,6 +1525,9 @@
 #endif
 #if defined(APP_WIREGUARD)
 		{EVM_RESTART_WIREGUARD,		EVT_RESTART_WIREGUARD,		RCN_RESTART_WIREGUARD,	0},
+#endif
+#if defined(APP_ZAPRET)
+		{EVM_RESTART_ZAPRET,		EVT_RESTART_ZAPRET,		RCN_RESTART_ZAPRET,	EVM_RESTART_FIREWALL},
 #endif
 #if defined(APP_SMARTDNS)
 		{EVM_RESTART_SMARTDNS,		EVT_RESTART_SMARTDNS,		RCN_RESTART_SMARTDNS,	0},

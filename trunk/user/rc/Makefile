@@ -95,6 +95,7 @@ romfs:
 	cd $(INSTALLDIR)/sbin && ln -sf rc restart_vpn_client
 	cd $(INSTALLDIR)/sbin && ln -sf rc run_telnetd
 	cd $(INSTALLDIR)/sbin && ln -sf rc restart_firewall
+	cd $(INSTALLDIR)/sbin && ln -sf rc restart_zapret
 	cd $(INSTALLDIR)/sbin && ln -sf rc pids
 	cd $(INSTALLDIR)/sbin && ln -sf rc rstats
 	cd $(INSTALLDIR)/sbin && ln -sf rc stop_wan

@@ -165,6 +165,9 @@ dir_$(CONFIG_FIRMWARE_INCLUDE_MTR)		+= mtr
 dir_$(CONFIG_FIRMWARE_INCLUDE_SOCAT)		+= socat
 dir_$(CONFIG_FIRMWARE_INCLUDE_SRELAY)		+= srelay
 dir_$(CONFIG_FIRMWARE_INCLUDE_TUNSAFE)		+= tunsafe
+ifneq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_ZAPRET) $(CONFIG_FIRMWARE_INCLUDE_ZAPRET2)))
+dir_y						+= zapret
+endif
 ifeq ($(CONFIG_FIRMWARE_INCLUDE_WIREGUARD),y)
 dir_y += wireguard
 dir_y += wireguard-tools

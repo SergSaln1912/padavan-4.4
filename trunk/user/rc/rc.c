@@ -1195,6 +1195,12 @@ handle_notifications(void)
 			restart_wireguard();
 		}
 #endif
+#if defined(APP_ZAPRET)
+		else if (strcmp(entry->d_name, RCN_RESTART_ZAPRET) == 0)
+		{
+			restart_zapret();
+		}
+#endif
 #if defined(APP_SQM)
 		else if (strcmp(entry->d_name, RCN_RESTART_SQM) == 0)
 		{
@@ -1676,6 +1682,11 @@ main(int argc, char **argv)
 #if defined(APP_ARIA)
 	else if (!strcmp(base, "stop_aria")) {
 		stop_aria();
+	}
+#endif
+#if defined(APP_ZAPRET)
+	else if (!strcmp(base, "restart_zapret")) {
+		restart_zapret();
 	}
 #endif
 	else if (!strcmp(base, "start_ddns")) {

@@ -149,3 +149,8 @@ ifdef ISPADAVAN
 ccflags-y += -I$(kbuild-dir)/compat/sock/include
 amneziawg-y += compat/sock/sock.o
 endif
+
+# ng-port: в ядре 4.4 нет crypto/chacha.h — используем переходник
+ifeq ($(wildcard $(srctree)/include/crypto/chacha.h),)
+ccflags-y += -I$(kbuild-dir)/compat/chacha/include
+endif

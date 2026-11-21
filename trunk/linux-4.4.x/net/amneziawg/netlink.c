@@ -432,7 +432,7 @@ static int wg_get_device_dump(struct sk_buff *skb, struct netlink_callback *cb)
 #ifndef ISPADAVAN
 			  NETLINK_CB(cb->skb).portid,
 #else
-			  NETLINK_CB(cb->skb).pid,
+			  NETLINK_CB(cb->skb).portid,
 #endif
 			  cb->nlh->nlmsg_seq,
 			  &genl_family, NLM_F_MULTI, WG_CMD_GET_DEVICE);

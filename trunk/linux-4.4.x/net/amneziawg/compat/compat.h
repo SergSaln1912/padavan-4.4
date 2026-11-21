@@ -708,12 +708,14 @@ struct __compat_dummy_container { char dev; };
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0) && !defined(ISRHEL7)
+#if 0 /* ng-port: есть в ядре 4.4: skb_put_data */
 static inline void *skb_put_data(struct sk_buff *skb, const void *data, unsigned int len)
 {
 	void *tmp = skb_put(skb, len);
 	memcpy(tmp, data, len);
 	return tmp;
 }
+#endif /* ng-port: есть в ядре 4.4 */
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0) && !defined(ISRHEL7)
@@ -832,6 +834,7 @@ struct __kernel_timespec {
 #define MODULE_ALIAS_NET_PF_PROTO_NAME(pf, proto, name) MODULE_ALIAS("net-pf-" __stringify(pf) "-proto-" __stringify(proto) name)
 #define MODULE_ALIAS_GENL_FAMILY(family) MODULE_ALIAS_NET_PF_PROTO_NAME(PF_NETLINK, NETLINK_GENERIC, "-family-" family)
 //#include <net/flow_keys.h>
+#if 0 /* ng-port: есть в ядре 4.4: skb_probe_transport_header */
 static inline void skb_probe_transport_header(struct sk_buff *skb,
                                               const int offset_hint)
 {
@@ -844,6 +847,7 @@ static inline void skb_probe_transport_header(struct sk_buff *skb,
             skb_set_transport_header(skb, offset_hint);
 
 }
+#endif /* ng-port: есть в ядре 4.4 */
 #endif
 #define skb_probe_transport_header(a) skb_probe_transport_header(a, 0)
 #endif
@@ -1475,6 +1479,7 @@ static inline char *nla_strdup(const struct nlattr *nla, gfp_t flags)
  *          1 if something is broken and should be logged (!!! above)
  *          2 if packet should be dropped
  */
+#if 0 /* ng-port: есть в ядре 4.4: INET_ECN_decapsulate */
 static inline int INET_ECN_decapsulate(struct sk_buff *skb,
                                        __u8 outer, __u8 inner)
 {
@@ -1495,7 +1500,9 @@ static inline int INET_ECN_decapsulate(struct sk_buff *skb,
 
         return 0;
 }
+#endif /* ng-port: есть в ядре 4.4 */
 
+#if 0 /* ng-port: есть в ядре 4.4: IP_ECN_decapsulate */
 static inline int IP_ECN_decapsulate(const struct iphdr *oiph,
                                      struct sk_buff *skb)
 {
@@ -1512,19 +1519,25 @@ static inline int IP_ECN_decapsulate(const struct iphdr *oiph,
 
         return INET_ECN_decapsulate(skb, oiph->tos, inner);
 }
+#endif /* ng-port: есть в ядре 4.4 */
 
+#if 0 /* ng-port: есть в ядре 4.4: __ipv6_addr_needs_scope_id */
 static inline bool __ipv6_addr_needs_scope_id(int type)
 {
         return type & IPV6_ADDR_LINKLOCAL ||
                (type & IPV6_ADDR_MULTICAST &&
                 (type & (IPV6_ADDR_LOOPBACK|IPV6_ADDR_LINKLOCAL)));
 }
+#endif /* ng-port: есть в ядре 4.4 */
 
+#if 0 /* ng-port: есть в ядре 4.4: ipv6_iface_scope_id */
 static inline __u32 ipv6_iface_scope_id(const struct in6_addr *addr, int iface)
 {
         return __ipv6_addr_needs_scope_id(__ipv6_addr_type(addr)) ? iface : 0;
 }
+#endif /* ng-port: есть в ядре 4.4 */
 
+#if 0 /* ng-port: есть в ядре 4.4: sg_nents */
 static inline int sg_nents(struct scatterlist *sg)
 {
         int nents;
@@ -1532,12 +1545,15 @@ static inline int sg_nents(struct scatterlist *sg)
                 nents++;
         return nents;
 }
+#endif /* ng-port: есть в ядре 4.4 */
 
+#if 0 /* ng-port: есть в ядре 4.4: ip6_flow_hdr */
 static inline void ip6_flow_hdr(struct ipv6hdr *hdr, unsigned int tclass,
                                 __be32 flowlabel)
 {
         *(__be32 *)hdr = htonl(0x60000000 | (tclass << 20)) | flowlabel;
 }
+#endif /* ng-port: есть в ядре 4.4 */
 
 #endif
 

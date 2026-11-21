@@ -30,6 +30,7 @@ config_test:
 configure:
 	( cd $(SRC_NAME) ; \
 	autoreconf -fi ; \
+	PKG_CONFIG_LIBDIR=$(STAGEDIR)/lib/pkgconfig PKG_CONFIG_PATH=$(STAGEDIR)/lib/pkgconfig \
 	./configure \
 		--prefix= \
 		--enable-static \

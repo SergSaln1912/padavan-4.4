@@ -807,6 +807,11 @@ ipt_filter_rules(char *man_if, char *wan_if, char *lan_if, char *lan_ip,
 
 	vpnc_if = NULL;
 	if (i_vpnc_enable) {
+#if defined (APP_AMNEZIAWG)	/* ng-port: vpnc_if awg (filter) */
+		if (i_vpnc_type == 3) {
+			vpnc_if = IFNAME_CLIENT_WG;
+		} else
+#endif
 #if defined (APP_OPENVPN)
 		if (i_vpnc_type == 2) {
 			if (nvram_get_int("vpnc_ov_mode") == 1)
@@ -1142,9 +1147,14 @@ ipt_filter_rules(char *man_if, char *wan_if, char *lan_if, char *lan_ip,
 			if (i_need_vpnlist) {
 				if (i_vpns_actl == 0 || i_vpns_actl == 1)
 					fprintf(fp, "-A %s -j %s\n", dtype, IPT_CHAIN_NAME_VPN_LIST);
-				else if (i_vpns_actl == 4)
+				else if (i_vpns_actl == 4) {
 					fprintf(fp, "-A %s -o %s -j %s\n", dtype, wan_if, IPT_CHAIN_NAME_VPN_LIST);
-				else
+#if defined (APP_AMNEZIAWG)	/* ng-port: vpnlist awg */
+					if (vpnc_if && i_vpnc_type == 3) {
+						fprintf(fp, "-A %s -o %s -j %s\n", dtype, vpnc_if, IPT_CHAIN_NAME_VPN_LIST);
+					}
+#endif
+				} else
 					fprintf(fp, "-A %s -o %s -j %s\n", dtype, lan_if, IPT_CHAIN_NAME_VPN_LIST);
 			}
 		}
@@ -1892,14 +1902,14 @@ ipt_nat_rules(char *man_if, char *man_ip,
 #if defined (APP_AMNEZIAWG)
 				if (i_vpns_type == 3) {
 					if (i_vpns_actl == 0 || i_vpns_actl == 1 || i_vpns_actl == 4) {
-						include_masquerade(fp, wan_if, wan_ip, vpn_net);
+						include_masquerade(fp, wan_if, wan_ip, vpn_net, 0);
 
 						/* masquerade WG client connection for WG server clients */
 						if (vpnc_if)
-							include_masquerade(fp, vpnc_if, NULL, vpn_net);
+							include_masquerade(fp, vpnc_if, NULL, vpn_net, 0);
 					}
 					if (i_vpns_vuse == 2)
-						include_masquerade(fp, lan_if, lan_ip, vpn_net);
+						include_masquerade(fp, lan_if, lan_ip, vpn_net, 0);
 				} else
 #endif
 #if defined (APP_OPENVPN)

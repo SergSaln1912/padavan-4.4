@@ -911,6 +911,9 @@ stop_services(int stopall)
 #if defined(APP_WIREGUARD)
 	stop_wireguard();
 #endif
+#if defined(APP_ZAPRET)
+	stop_zapret();
+#endif
 #if defined(APP_SMARTDNS)
 	stop_smartdns();
 #endif

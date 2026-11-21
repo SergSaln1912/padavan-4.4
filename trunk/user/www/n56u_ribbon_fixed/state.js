@@ -395,7 +395,7 @@ tabtitle[2] = new Array("", "<#menu5_2_1#>", "<#menu5_2_2#>", "<#menu5_2_3#>", "
 tabtitle[3] = new Array("", "<#menu5_3_1#>", "<#menu5_3_3#>", "<#menu5_3_4#>", "<#menu5_3_5#>", "<#menu5_3_6#>");
 tabtitle[4] = new Array("", "<#menu5_5_1#>", "<#menu5_5_5#>", "<#menu5_5_2#>", "<#menu5_5_3#>", "<#menu5_5_4#>");
 tabtitle[5] = new Array("", "<#menu5_4_3#>", "<#menu5_4_1#>", "<#menu5_4_2#>", "<#menu5_4_4#>", "<#menu5_4_5#>");
-tabtitle[6] = new Array("", "<#menu5_6_2#>", "<#menu5_6_5#>", "<#menu5_6_1#>", "<#menu5_6_3#>", "<#menu5_6_4#>", "<#menu5_6_6#>");
+tabtitle[6] = new Array("", "<#menu5_6_2#>", "<#menu5_6_1#>", "<#menu5_6_3#>", "<#menu5_6_4#>", "<#menu5_6_6#>");
 tabtitle[7] = new Array("", "<#menu5_10_1#>", "<#menu5_10_2#>", "<#menu5_10_3#>");
 tabtitle[8] = new Array("", "<#menu5_11#>", "<#menu5_12#>", "WAN", "", "", "", "", "", "", "");
 tabtitle[9] = new Array("", "<#menu5_7_2#>", "<#menu5_7_3#>", "<#menu5_7_5#>", "<#menu5_7_6#>", "<#menu5_7_8#>");
@@ -431,6 +431,8 @@ if (found_app_frp()){
 	tabtitle[19] = new Array("", "<#menu5_25#>");
 }
 
+tabtitle[20] = new Array("", "<#Services_Menu_1#>", "<#Services_Menu_2#>", "<#Services_Menu_3#>", "<#Services_Menu_4#>", "<#Services_Menu_5#>", "<#Services_Menu_6#>", "<#Services_Menu_7#>", "<#Services_Menu_8#>");
+
 //Level 3 Tab title
 
 tablink[0] = new Array("", "Advanced_Wireless2g_Content.asp", "Advanced_WGuest2g_Content.asp", "Advanced_WMode2g_Content.asp", "Advanced_ACL2g_Content.asp", "Advanced_WSecurity2g_Content.asp", "Advanced_WAdvanced2g_Content.asp");
@@ -439,7 +441,7 @@ tablink[2] = new Array("", "Advanced_LAN_Content.asp", "Advanced_DHCP_Content.as
 tablink[3] = new Array("", "Advanced_WAN_Content.asp", "Advanced_IPv6_Content.asp", "Advanced_VirtualServer_Content.asp", "Advanced_Exposed_Content.asp", "Advanced_DDNS_Content.asp");
 tablink[4] = new Array("", "Advanced_BasicFirewall_Content.asp", "Advanced_Netfilter_Content.asp", "Advanced_URLFilter_Content.asp", "Advanced_MACFilter_Content.asp", "Advanced_Firewall_Content.asp");
 tablink[5] = new Array("", "Advanced_AiDisk_others.asp", "Advanced_AiDisk_samba.asp", "Advanced_AiDisk_ftp.asp", "Advanced_Modem_others.asp", "Advanced_Printer_others.asp");
-tablink[6] = new Array("", "Advanced_System_Content.asp", "Advanced_Services_Content.asp", "Advanced_OperationMode_Content.asp", "Advanced_FirmwareUpgrade_Content.asp", "Advanced_SettingBackup_Content.asp", "Advanced_Console_Content.asp");
+tablink[6] = new Array("", "Advanced_System_Content.asp", "Advanced_OperationMode_Content.asp", "Advanced_FirmwareUpgrade_Content.asp", "Advanced_SettingBackup_Content.asp", "Advanced_Console_Content.asp");
 tablink[7] = new Array("", "Advanced_Tweaks_Content.asp", "Advanced_Scripts_Content.asp", "Advanced_InetDetect_Content.asp");
 tablink[8] = new Array("", "Main_WStatus2g_Content.asp", "Main_WStatus_Content.asp", "", "", "", "", "", "", "", "");
 tablink[9] = new Array("", "Main_LogStatus_Content.asp", "Main_DHCPStatus_Content.asp", "Main_IPTStatus_Content.asp", "Main_RouteStatus_Content.asp", "Main_CTStatus_Content.asp");
@@ -498,6 +500,8 @@ if (found_app_frp()){
 	tablink[9].push('Advanced_frp_log.asp');
 }
 
+tablink[20] = new Array("", "Advanced_Services_Content.asp", "Advanced_Services_DNSCrypt.asp", "Advanced_Services_DoH.asp", "Advanced_Services_DoT.asp", "Advanced_Services_Zapret.asp", "Advanced_Services_Proxy.asp", "Advanced_Services_IPSet.asp", "Advanced_Services_Service8.asp");
+
 //Level 2 Menu
 menuL2_title = new Array(20)
 menuL2_title = new Array("", "<#menu5_11#>", "<#menu5_12#>", "<#menu5_2#>", "<#menu5_3#>", "<#menu5_5#>", "<#menu5_4#>", "<#menu5_6#>", "<#menu5_10#>", "<#menu5_9#>", "<#menu5_7#>");
@@ -540,6 +544,7 @@ if (found_app_sqm()){
 if (found_app_frp()){
 	menuL2_title.push("<#menu5_25#>");
 } else menuL2_title.push("");
+menuL2_title.push("<#menu5_6_5#>");	// Сервисы (ng-port)
 
 menuL2_link  = new Array("", tablink[0][1], tablink[1][1], tablink[2][1], tablink[3][1], tablink[4][1], tablink[5][1], tablink[6][1], tablink[7][1], support_2g_radio() ? tablink[8][1] : "Main_EStatus_Content.asp", tablink[9][1]);
 if (found_app_scutclient()){
@@ -589,6 +594,7 @@ if (found_app_sqm()){
 if (found_app_frp()){
 	menuL2_link.push(frp_array[1]);
 } else menuL2_link.push("");
+menuL2_link.push(tablink[20][1]);	// Сервисы (ng-port)
 
 //Level 1 Menu in Gateway, Router mode
 menuL1_title = new Array("", "<#menu1#>", "", "<#menu2#>", "<#menu6#>", "<#menu4#>", "<#menu5_8#>", "<#menu5#>");
@@ -613,6 +619,15 @@ function show_menu(L1, L2, L3){
 		num_ephy = 2;
 	if (num_ephy > 8)
 		num_ephy = 8;
+	// вкладки Сервисов: скрываем недоступные приложения (ng-port)
+	var _fa = function(n){ return (typeof window[n] === 'function') ? window[n]() : 0; };
+	var srv_checks = [function(){return _fa('found_app_dnscrypt');}, function(){return _fa('found_app_doh');},
+		function(){return _fa('found_app_stubby');}, function(){return _fa('found_app_zapret');},
+		function(){return _fa('found_app_tor') || _fa('found_app_privoxy');}, function(){return _fa('found_support_ipset');}];
+	for (var _i = 0; _i < srv_checks.length; _i++){
+		if (!srv_checks[_i]()) tabtitle[20][_i+2] = "";
+	}
+
 	if(sw_mode == '3'){
 		tabtitle[2].splice(3,1);//LAN
 		tablink[2].splice(3,1);
@@ -630,6 +645,7 @@ function show_menu(L1, L2, L3){
 		menuL2_title[4] = "";
 		menuL2_link[5] = "";  //remove Firewall
 		menuL2_title[5] = "";
+		for (i = 2; i <= 7; i++) tabtitle[20][i] = "";	// ng-port: Сервисы в режиме AP
 		
 		if (lan_proto == '1'){
 			tabtitle[2].splice(2,1);
@@ -711,7 +727,14 @@ function show_menu(L1, L2, L3){
 
 	$("mainMenu").innerHTML = menu1_code;
 
-	for(var i = 1; i <= menuL2_title.length-1; ++i){
+	var l2_order = [];	// порядок пунктов (ng-port): Сервисы после USB
+	for (var k = 1; k <= menuL2_title.length-1; ++k) l2_order.push(k);
+	if (l2_order.indexOf(21) >= 0 && l2_order.indexOf(6) >= 0){
+		l2_order.splice(l2_order.indexOf(21), 1);
+		l2_order.splice(l2_order.indexOf(6) + 1, 0, 21);
+	}
+	for(var oi = 0; oi < l2_order.length; ++oi){
+		var i = l2_order[oi];
 		if(menuL2_title[i] == "")
 			continue;
 		else if(L2 == i)

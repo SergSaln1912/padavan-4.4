@@ -40,7 +40,7 @@ let IPSetList = [<% get_ipset_list_hook(); %>];
 
 function initial(){
 	show_banner(1);
-	show_menu(5,7,6);
+	show_menu(5,21,6);
 	show_footer();
 	load_body();
 

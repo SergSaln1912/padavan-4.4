@@ -20,7 +20,7 @@ var $j = jQuery.noConflict();
 
 function initial(){
 	show_banner(2);
-	show_menu(5,7,3);
+	show_menu(5, 7, 2);
 	show_footer();
 
 	if(sw_mode == '1' || sw_mode == '3'){

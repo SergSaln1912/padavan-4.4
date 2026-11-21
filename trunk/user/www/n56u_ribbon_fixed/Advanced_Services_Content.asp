@@ -50,7 +50,7 @@ var lan_ipaddr = '<% nvram_get_x("", "lan_ipaddr"); %>';
 
         function initial() {
             show_banner(1);
-            show_menu(5, 7, 2);
+            show_menu(5, 21, 1);
             show_footer();
             load_body();
 

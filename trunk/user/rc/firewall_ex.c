@@ -2224,6 +2224,10 @@ start_firewall_ex(void)
 	if (check_if_file_exist(adbyby_iptables))
 		doSystem("iptables-restore -n %s", adbyby_iptables);
 #endif
+#if defined(APP_ZAPRET)
+	reload_zapret();
+#endif
+
 	if (check_if_file_exist(int_iptables_script))
 		doSystem("%s", int_iptables_script);
 

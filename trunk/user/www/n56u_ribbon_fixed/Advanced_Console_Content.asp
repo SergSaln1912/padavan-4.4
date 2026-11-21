@@ -21,7 +21,7 @@ var $j = jQuery.noConflict();
 
 function initial(){
 	show_banner(1);
-	show_menu(5,7,6);
+	show_menu(5, 7, 5);
 	show_footer();
 
     if ("<% nvram_get_x("","ttyd_enable"); %>" === "1") {

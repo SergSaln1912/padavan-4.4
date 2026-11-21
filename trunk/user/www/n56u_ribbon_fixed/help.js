@@ -187,6 +187,14 @@ helpcontent[24] = new Array("",
 				"<#LANHostConfig_x_DDNSStatus_itemdesc#>");
 
 
+helpcontent[25] = new Array("",
+				"<#Adm_Svc_dnscrypt_desc#>",
+				"<#Adm_Svc_zapret_desc#>",
+				"<#Adm_Svc_doh_desc#>",
+				"<#Service_Stubby_Desc#>",
+				"<#Service_Stubby_Mode_Desc#>",
+				"<#Service_DNSCrypt_Mode_Desc#>");
+
 function openTooltip(obj, hint_array_id, hint_show_id)
 {
 	if (help_enable == "0" && hint_show_id > 0)

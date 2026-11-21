@@ -38,7 +38,7 @@ $j(document).ready(function() {
 
 function initial(){
 	show_banner(1);
-	show_menu(5,7,5);
+	show_menu(5,21,5);
 	show_footer();
 	load_body();
 

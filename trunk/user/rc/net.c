@@ -724,6 +724,8 @@ reload_nat_modules(void)
 		sfe_loaded = 1;
 	}
 	if (sfe_loaded) {
+		/* ng-port: первые пакеты соединения идут через netfilter (нужно для nfqws) */
+		doSystem("echo 30 > /sys/fast_classifier/offload_at_pkts");
 		if (sfe_enable == 1)
 			doSystem("echo 0 > /sys/fast_classifier/skip_to_bridge_ingress");
 		else if (sfe_enable == 2)

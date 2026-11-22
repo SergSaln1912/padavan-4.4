@@ -2616,12 +2616,12 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_frp = 0;
 #endif
-#if defined(APP_VPNSVR)
+#if defined(APP_VPNSVR) || defined (APP_AMNEZIAWG)
 	int found_app_vpnsvr = 1;
 #else
 	int found_app_vpnsvr = 0;
 #endif
-#if defined(APP_VPNCLI)
+#if defined(APP_VPNCLI) || defined (APP_AMNEZIAWG)
 	int found_app_vpncli = 1;
 #else
 	int found_app_vpncli = 0;

@@ -234,11 +234,14 @@ endif
 ifneq ($(CONFIG_FIRMWARE_INCLUDE_SMARTDNS),y)
 	rm -f $(INSTALLDIR)/www/Advanced_smartdns.asp
 endif
-ifneq ($(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_SERVER),y)
+# ng-port: vpn pages
+ifeq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_SERVER) $(CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG)))
 	rm -f $(INSTALLDIR)/www/vpnsrv.asp
 endif
 ifneq ($(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_CLIENT),y)
 	rm -f $(INSTALLDIR)/www/vpn_clients.asp
+endif
+ifeq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_CLIENT) $(CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG)))
 	rm -f $(INSTALLDIR)/www/vpncli.asp
 endif
 clean:

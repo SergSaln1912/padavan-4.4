@@ -677,7 +677,7 @@ include_masquerade(FILE *fp, char *wan_if, char *wan_ip, char *lan_net, int is_f
 {
 	char *dtype = "POSTROUTING";
 
-	if (is_fullcone) {
+	if (0 /* ng-port: no fullcone in 4.4 */ && is_fullcone) {
  		fprintf(fp, "-A %s -o %s -s %s -j MASQUERADE --mode fullcone\n", dtype, wan_if, lan_net);
  	} else {
  		if (wan_ip)
@@ -1758,7 +1758,7 @@ ip6t_nat_rules(char *man_if)
 	fprintf(fp, ":%s %s [0:0]\n", "INPUT", "ACCEPT");
 	fprintf(fp, ":%s %s [0:0]\n", "OUTPUT", "ACCEPT");
 	fprintf(fp, ":%s %s [0:0]\n", "POSTROUTING", "ACCEPT");
-	fprintf(fp, "-A POSTROUTING -s fc00:101:101::1/64 -j FULLCONENAT\n");
+	/* ng-port: no FULLCONENAT in 4.4 */
 	fprintf(fp, "COMMIT\n\n");
 	fclose(fp);
 		doSystem("ip6tables-restore %s", ipt_file);

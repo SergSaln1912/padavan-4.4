@@ -523,6 +523,114 @@ def dns_flags_all_boards():
           else "уже есть     профили плат: флаги DNSCRYPT/STUBBY/DOH")
 dns_flags_all_boards()
 
+# ---------------------------------------------------------------- 28. autostart.sh: сообщения журнала по-английски
+# В системном журнале строки автозапуска были на китайском (自动启动 ...). Переводятся только тексты logger, логика не меняется.
+def autostart_english():
+    rel = "trunk/user/scripts/autostart.sh"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    tr = [
+        ('logger -t "防止 DNSmasq 启动失败，创建/tmp/dnsmasq.dom/"', 'logger -t "autostart" "Creating /tmp/dnsmasq.dom/ to prevent dnsmasq start failure"'),
+        ("正在检查路由是否已连接互联网...", "Checking whether the router is connected to the Internet..."),
+        ("正在启动 SQM QOS...", "Starting SQM QoS..."),
+        ("正在启动 Adbyby plus...", "Starting Adbyby plus..."),
+        ("正在启动 adguardhome...", "Starting AdGuard Home..."),
+        ("正在启动科学上网...", "Starting proxy services..."),
+        ("正在启动 SmartDNS...", "Starting SmartDNS..."),
+        ("正在启动阿里ddns...", "Starting Aliyun DDNS..."),
+        ("正在启动 ddnsto...", "Starting ddnsto..."),
+        ("正在启动阿里云盘...", "Starting Aliyun Drive..."),
+        ("正在启动 zerotier...", "Starting ZeroTier..."),
+        ("正在启动 wireguard...", "Starting WireGuard..."),
+        ("正在启动frp client...", "Starting FRP client..."),
+    ]
+    n = 0
+    for a, b in tr:
+        if a in s: s = s.replace(a, b); n += 1
+    s = s.replace('logger -t "自动启动"', 'logger -t "autostart"')
+    left = re.findall(r'^[^#\n]*logger[^\n]*[\u4e00-\u9fff][^\n]*$', s, re.M)
+    if n == 0 and "自动启动" not in raw: print("уже есть     autostart.sh: сообщения на английском"); return
+    wr(p, s.replace("\n", "\r\n") if crlf else s)
+    print("сделано      autostart.sh: сообщения logger по-английски (%d строк)" % n + ("; осталось с китайским: %d" % len(left) if left else ""))
+autostart_english()
+
+# ---------------------------------------------------------------- 29. STAGEDIR для CMake берётся из окружения make, а не из оболочки
+# vendors/cmake/cross-mipsel-linux.cmake читает $ENV{STAGEDIR}, но trunk/Makefile его не экспортировал. Если в оболочке
+# остался STAGEDIR от сборки padavan-ng, CMake брал OpenSSL 3 из padavan-ng/trunk/stage:
+# https_dns_proxy и stubby требовали libssl.so.3 (в 4.4 только OpenSSL 1.1.1w) и не запускались.
+def export_stagedir():
+    rel = "trunk/Makefile"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    if re.search(r"^export\b[^\n]*\bSTAGEDIR\b", s, re.M): print("уже есть     trunk/Makefile: export STAGEDIR"); return
+    m = re.search(r"^(export CONFIG_CMAKE_TOOLCHAIN_FILE[^\n]*)$", s, re.M)
+    if not m: print("НЕ НАЙДЕНО   trunk/Makefile: строка export CONFIG_CMAKE_TOOLCHAIN_FILE"); return
+    s = s[:m.end()] + "\nexport STAGEDIR # ng-port: CMake читает $ENV{STAGEDIR}" + s[m.end():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      trunk/Makefile: export STAGEDIR")
+export_stagedir()
+
+# ---------------------------------------------------------------- 30. mtd_write: перезагрузка после записи прошивки напрямую через ядро
+# После записи раздела firmware (в нём же squashfs rootfs) do_reboot() вызывал system("/sbin/reboot"): запускается /bin/sh и rc
+# с уже перезаписанного rootfs, процесс зависает (в журнале SQUASHFS error), до вызова reboot(2) дело не доходит -> роутер
+# не перезагружается после обновления из веб-интерфейса. Для команды write сразу sync() и reboot(2).
+def mtd_hard_reboot():
+    rel = "trunk/user/mtd_write/mtd.c"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    if "ng-port: hard_reboot" in s: print("уже есть     mtd.c: прямая перезагрузка после write"); return
+    a = "static void do_reboot(void)\n{"
+    old = '\t/* try regular reboot method first */\n\tsystem("/sbin/reboot");\n\tsleep(2);\n'
+    if a not in s or old not in s: print("НЕ НАЙДЕНО   mtd.c: do_reboot"); return
+    new = ('\t/* ng-port: hard_reboot (после записи firmware rootfs уже перезаписан, /sbin/reboot и /bin/sh недоступны) */\n'
+           '\tif (!hard_reboot) {\n\t\t/* try regular reboot method first */\n\t\tsystem("/sbin/reboot");\n\t\tsleep(2);\n\t} else {\n\t\tsync();\n\t}\n')
+    s = s.replace(old, new, 1)
+    s = s.replace(a, "static int hard_reboot = 0;\n\n" + a, 1)
+    case = "\t\tcase CMD_WRITE:\n\t\t\tif (!unlocked)\n\t\t\t\tmtd_unlock(device);\n\t\t\tmtd_write(imagefd, device, fis_layout, part_offset);\n"
+    if case not in s: print("НЕ НАЙДЕНО   mtd.c: case CMD_WRITE"); return
+    s = s.replace(case, case + "\t\t\thard_reboot = 1;\n", 1)
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      mtd.c: после write перезагрузка через reboot(2) без system()")
+mtd_hard_reboot()
+
+# ---------------------------------------------------------------- 31. Версия прошивки: вместо даты сборки короткий хеш git (как в образах padavan-ng)
+# trunk/versions.inc: FIRMWARE_BUILDS_REV=$(shell git rev-parse --short=7 HEAD) -> "4.4.198.9-100_a1b2c3d" (до 8 символов; без git суффикс пропадает).
+# Версия вшивается флагом -DFWREVSTR в user/rc/common_ex.c, а make не отслеживает смену флагов: чтобы после нового коммита
+# хеш обновлялся, common_ex.o в rc/Makefile пересобирается при каждой сборке (один небольшой файл).
+def version_rev_git():
+    rel = "trunk/versions.inc"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel)
+    else:
+        raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+        # --short=7: в большом репозитории git сам берёт 9 знаков, а common_ex.c принимает не больше 8 (иначе суффикса нет совсем)
+        if "git rev-parse --short=7" in s: print("уже есть     versions.inc: BUILDS_REV = git rev-parse --short=7")
+        else:
+            n, c = re.subn(r"^FIRMWARE_BUILDS_REV=.*$", "FIRMWARE_BUILDS_REV=$(shell git rev-parse --short=7 HEAD 2>/dev/null)", s, count=1, flags=re.M)
+            if c: wr(p, n.replace("\n", "\r\n") if crlf else n); print("сделано      versions.inc: FIRMWARE_BUILDS_REV = хеш git")
+            else: print("НЕ НАЙДЕНО   versions.inc: FIRMWARE_BUILDS_REV")
+    rel = "trunk/user/rc/Makefile"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    if "ng-port: force common_ex" in s: print("уже есть     rc/Makefile: пересборка common_ex.o"); return
+    # после цели all (иначе первой целью по умолчанию станет force_common_ex): перед "c.o:"
+    m = re.search(r"^c\.o:\n", s, re.M)
+    if not m or not re.search(r"^all:", s[:m.start()], re.M): print("НЕ НАЙДЕНО   rc/Makefile: места после цели all (c.o:)"); return
+    s = s[:m.start()] + "# ng-port: force common_ex (версия прошивки в common_ex.c)\n.PHONY: force_common_ex\nforce_common_ex:\ncommon_ex.o: force_common_ex\n\n" + s[m.start():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      rc/Makefile: common_ex.o пересобирается при каждой сборке")
+version_rev_git()
+
+# ---------------------------------------------------------------- 32. Имя образа содержит хеш версии: RM2100_4.4.198.9-100_<хеш>.trx
+# vendors/Ralink/Makefile: IMAGE = ..._$(FIRMWARE_BUILDS_VER).trx -> ..._$(FIRMWARE_BUILDS_VER)_$(FIRMWARE_BUILDS_REV).trx
+# (как в строке версии на роутере; без git суффикс не добавляется).
+def image_name_rev():
+    rel = "trunk/vendors/Ralink/Makefile"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    if "$(FIRMWARE_BUILDS_REV)" in s: print("уже есть     Ralink/Makefile: хеш в имени образа"); return
+    old = "-$(FIRMWARE_BUILDS_VER).trx"
+    if old not in s: print("НЕ НАЙДЕНО   Ralink/Makefile: имя образа (IMAGE)"); return
+    s = s.replace(old, "-$(FIRMWARE_BUILDS_VER)$(if $(FIRMWARE_BUILDS_REV),_$(FIRMWARE_BUILDS_REV)).trx", 1)
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      Ralink/Makefile: имя образа с хешем версии")
+image_name_rev()
+
 # ---------------------------------------------------------------- вспомогательная: значение CONFIG_* в профиле RM2100.config
 def set_cfg(name, value, note=None):
     rel = "trunk/configs/templates/RM2100.config"; p = os.path.join(REPO, rel)

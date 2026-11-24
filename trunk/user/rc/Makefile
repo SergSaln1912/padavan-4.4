@@ -72,6 +72,11 @@ all: $(OBJS) Makefile
 	$(CC) -o $(EXEC) $(OBJS) $(LDFLAGS)
 	$(STRIP) $(EXEC)
 
+# ng-port: force common_ex (версия прошивки в common_ex.c)
+.PHONY: force_common_ex
+force_common_ex:
+common_ex.o: force_common_ex
+
 c.o:
 	$(CC) -c $*.c $(CFLAGS)
 

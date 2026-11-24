@@ -777,14 +777,21 @@ static void usage(void)
 	exit(1);
 }
 
+static int hard_reboot = 0;
+
 static void do_reboot(void)
 {
 	fprintf(stderr, "Rebooting ...\n");
 	fflush(stderr);
 
-	/* try regular reboot method first */
-	system("/sbin/reboot");
-	sleep(2);
+	/* ng-port: hard_reboot (после записи firmware rootfs уже перезаписан, /sbin/reboot и /bin/sh недоступны) */
+	if (!hard_reboot) {
+		/* try regular reboot method first */
+		system("/sbin/reboot");
+		sleep(2);
+	} else {
+		sync();
+	}
 
 	/* if we're still alive at this point, force the kernel to reboot */
 	syscall(SYS_reboot,LINUX_REBOOT_MAGIC1,LINUX_REBOOT_MAGIC2,LINUX_REBOOT_CMD_RESTART,NULL);
@@ -997,6 +1004,7 @@ int main (int argc, char **argv)
 			if (!unlocked)
 				mtd_unlock(device);
 			mtd_write(imagefd, device, fis_layout, part_offset);
+			hard_reboot = 1;
 			break;
 		case CMD_JFFS2WRITE:
 			if (!unlocked)

@@ -5,7 +5,7 @@
 #nvram set ntp_ready=0
 
 mkdir -p /tmp/dnsmasq.dom
-logger -t "防止 DNSmasq 启动失败，创建/tmp/dnsmasq.dom/"
+logger -t "autostart" "Creating /tmp/dnsmasq.dom/ to prevent dnsmasq start failure"
 
 # ap relay monitor [simonchen]
 if [ ! -x /etc/storage/sh_ezscript.sh ]; then
@@ -21,7 +21,7 @@ dnsmasq_Conf="/etc/storage/dnsmasq/dnsmasq.conf"
 smartdns_Ini="/etc/storage/smartdns_conf.ini"
 sdns_port=$(nvram get sdns_port)
 
-logger -t "自动启动" "正在检查路由是否已连接互联网..."
+logger -t "autostart" "Checking whether the router is connected to the Internet..."
 count=0
 while :
 do
@@ -47,22 +47,22 @@ fi
 
 if [ $(nvram get sqm_enable) = 1 ] ; then
 sleep 30
-logger -t "自动启动" "正在启动 SQM QOS..."
+logger -t "autostart" "Starting SQM QoS..."
 /usr/lib/sqm/run.sh
 fi
 
 if [ $(nvram get adbyby_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动 Adbyby plus..."
+logger -t "autostart" "Starting Adbyby plus..."
 /usr/bin/adbyby.sh start
 fi
 
 if [ $(nvram get adg_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动 adguardhome..."
+logger -t "autostart" "Starting AdGuard Home..."
 /usr/bin/adguardhome.sh start
 fi
 
 if [ $(nvram get ss_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动科学上网..."
+logger -t "autostart" "Starting proxy services..."
 /usr/bin/shadowsocks.sh start
 fi
 
@@ -75,36 +75,36 @@ if [ $(nvram get sdns_enable) = 1 ] ; then
        sed -i '/port=0/d' "$dnsmasq_Conf"
        rm  -f "$smartdns_Ini"
    fi
-logger -t "自动启动" "正在启动 SmartDNS..."
+logger -t "autostart" "Starting SmartDNS..."
 /usr/bin/smartdns.sh start
 fi
 
 if [ $(nvram get aliddns_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动阿里ddns..."
+logger -t "autostart" "Starting Aliyun DDNS..."
 /usr/bin/aliddns.sh start
 fi
 
 if [ $(nvram get ddnsto_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动 ddnsto..."
+logger -t "autostart" "Starting ddnsto..."
 /usr/bin/ddnsto.sh start
 fi
 
 if [ $(nvram get aliyundrive_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动阿里云盘..."
+logger -t "autostart" "Starting Aliyun Drive..."
 /usr/bin/aliyundrive-webdav.sh start
 fi
 
 if [ $(nvram get zerotier_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动 zerotier..."
+logger -t "autostart" "Starting ZeroTier..."
 /usr/bin/zerotier.sh start
 fi
 
 if [ $(nvram get wireguard_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动 wireguard..."
+logger -t "autostart" "Starting WireGuard..."
 /usr/bin/wireguard.sh start
 fi
 
 if [ $(nvram get frpc_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动frp client..."
+logger -t "autostart" "Starting FRP client..."
 /usr/bin/frp.sh start
 fi

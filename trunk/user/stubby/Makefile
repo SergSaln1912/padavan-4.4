@@ -35,6 +35,7 @@ configure:
 		-DCMAKE_INSTALL_FULL_SYSCONFDIR=/etc/storage \
 		-DCMAKE_INSTALL_SYSCONFDIR=/etc/storage \
 		-DCMAKE_BUILD_TYPE=Release \
+		-DGETDNS_LIBRARY=$(firstword $(wildcard $(STAGEDIR)/lib/libgetdns.a $(STAGEDIR)/usr/lib/libgetdns.a)) \
 		-DCMAKE_TOOLCHAIN_FILE=$(CONFIG_CMAKE_TOOLCHAIN_FILE) .. \
 	)
 

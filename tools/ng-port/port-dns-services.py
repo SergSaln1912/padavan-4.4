@@ -89,6 +89,26 @@ for rel in ("trunk/libs/libyaml/Makefile",):
     if s and "$(ROOTDIR)/include/cross-mipsel-linux.cmake" in s:
         save(N44, rel, s.replace("$(ROOTDIR)/include/cross-mipsel-linux.cmake", "$(CONFIG_CMAKE_TOOLCHAIN_FILE)"), crlf); step("сделано", "libyaml: cmake toolchain")
 
+# libgetdns: поддержка libevent2 не нужна (stubby работает со стандартным циклом). В padavan-ng её находил CMake в stage с libevent 2.x,
+# в 4.4 libevent другой (нет event2/event.h) и сборка падала на src/extension/libevent.c.
+s, crlf = load(N44, "trunk/libs/libgetdns/Makefile")
+if s is None: step("НЕТ ФАЙЛА", "libgetdns/Makefile")
+elif "-DBUILD_LIBEVENT2=OFF" in s: step("уже есть", "libgetdns: -DBUILD_LIBEVENT2=OFF")
+else:
+    n = re.sub(r"^([ \t]*)-DENABLE_STATIC=ON[ \t]*\\\n", lambda m: m.group(0) + m.group(1) + "-DBUILD_LIBEVENT2=OFF \\\n", s, count=1, flags=re.M)
+    if n == s: step("НЕ НАЙДЕНО", "libgetdns/Makefile: -DENABLE_STATIC=ON")
+    else: save(N44, "trunk/libs/libgetdns/Makefile", n, crlf); step("сделано", "libgetdns: -DBUILD_LIBEVENT2=OFF")
+
+# stubby: libgetdns при prefix=/ ставится в stage/usr/lib, а FindGetdns.cmake в кросс-режиме её не находит
+# ("Could NOT find Getdns (missing: GETDNS_LIBRARIES)"). Передаём путь к библиотеке явно (stage/lib или stage/usr/lib).
+s, crlf = load(N44, "trunk/user/stubby/Makefile")
+if s is None: step("НЕТ ФАЙЛА", "stubby/Makefile")
+elif "-DGETDNS_LIBRARY=" in s: step("уже есть", "stubby: -DGETDNS_LIBRARY")
+else:
+    n = re.sub(r"^([ \t]*)(-DCMAKE_TOOLCHAIN_FILE=)", lambda m: m.group(1) + "-DGETDNS_LIBRARY=$(firstword $(wildcard $(STAGEDIR)/lib/libgetdns.a $(STAGEDIR)/usr/lib/libgetdns.a)) \\\n" + m.group(1) + m.group(2), s, count=1, flags=re.M)
+    if n == s: step("НЕ НАЙДЕНО", "stubby/Makefile: -DCMAKE_TOOLCHAIN_FILE")
+    else: save(N44, "trunk/user/stubby/Makefile", n, crlf); step("сделано", "stubby: -DGETDNS_LIBRARY=<stage>/(usr/)lib/libgetdns.a")
+
 # ================================================================ 2. флаги сборки
 ins("trunk/user/shared/cflags.mk", "cflags.mk: -DAPP_DOH/-DAPP_STUBBY/-DAPP_DNSCRYPT",
     r"^ifeq \(\$\(CONFIG_FIRMWARE_INCLUDE_OPENVPN\),y\)\nCFLAGS \+= -DAPP_OPENVPN\nendif\n",
@@ -220,7 +240,34 @@ def evt_block(macro):
 vars_txt = None
 parts = [var_block(m) for m in M3]
 if all(parts): vars_txt = "".join(parts)
-ins(VR, "variables.c: переменные doh_*/stubby_*/dnscrypt_*", r'^\t\t\t\{"sshd_wbfp".*\n', vars_txt, '{"doh_enable"')
+# Переменные должны быть в таблице variables_LANHostConfig (страницы шлют sid_list=LANHostConfig;General;Storage;), как в NG.
+# В таблице FirewallConfig они молча не сохраняются (веб "Применить" возвращает прежнее значение).
+def vars_table(txt, name):
+    m = re.search(r"struct variable %s\[\] = \{\n" % name, txt)
+    if not m: return None
+    e = txt.find("{0,0,0,0}", m.end())
+    return (m.end(), e) if e > 0 else None
+s, crlf = load(N44, VR)
+if s is None: step("НЕТ ФАЙЛА", VR)
+elif vars_txt is None: step("НЕТ В NG", "variables.c: переменные doh_*/stubby_*/dnscrypt_*")
+else:
+    fw, lan = vars_table(s, "variables_FirewallConfig"), vars_table(s, "variables_LANHostConfig")
+    if not fw or not lan: step("НЕ НАЙДЕНО", "variables.c: таблицы FirewallConfig/LANHostConfig")
+    else:
+        changed = False
+        # миграция: блок, вставленный ранее в FirewallConfig, убираем
+        if '{"doh_enable"' in s[fw[0]:fw[1]]:
+            seg = s[fw[0]:fw[1]]
+            if vars_txt in seg: s = s[:fw[0]] + seg.replace(vars_txt, "", 1) + s[fw[1]:]; changed = True; step("сделано", "variables.c: переменные DNS убраны из FirewallConfig")
+            else: step("ВНИМАНИЕ", "variables.c: doh_* в FirewallConfig не совпадает с NG, уберите вручную")
+            lan = vars_table(s, "variables_LANHostConfig")
+        if '{"doh_enable"' in s[lan[0]:lan[1]]: step("уже есть", "variables.c: переменные DoH/DoT/DNSCrypt в LANHostConfig")
+        else:
+            m = re.search(r'^\t\t\t\{"sshd_enable", "", NULL, [^\n]*\n(?:\t\t\t\{"sshd_enable_gp"[^\n]*\n)?', s[lan[0]:lan[1]], re.M)
+            if not m: step("НЕ НАЙДЕНО", "variables.c: якорь sshd_enable в LANHostConfig")
+            else:
+                pos = lan[0] + m.end(); s = s[:pos] + vars_txt + s[pos:]; changed = True; step("сделано", "variables.c: переменные doh_*/stubby_*/dnscrypt_* (LANHostConfig)")
+        if changed: save(N44, VR, s, crlf)
 ev = "".join(evt_block(m) or "" for m in M3)
 ins(VR, "variables.c: события перезапуска DoH/DoT/DNSCrypt", r"^\t\t\{EVM_RESTART_SSHD,[^\n]*\n(?:#endif\n)?", ev or None, "EVM_RESTART_DOH,")
 

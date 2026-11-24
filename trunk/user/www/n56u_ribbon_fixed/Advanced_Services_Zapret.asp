@@ -25,7 +25,7 @@
 <script>
 var $j = jQuery.noConflict();
 var ipmonitor = [<% get_static_client(); %>];
-let IPSetList = [<% get_ipset_list_hook(); %>];
+let IPSetList = [];
 
 $j(document).ready(function() {
 	init_itoggle('zapret_enable', change_zapret_enabled);

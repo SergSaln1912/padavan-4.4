@@ -2616,12 +2616,12 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_frp = 0;
 #endif
-#if defined(APP_VPNSVR) || defined (APP_AMNEZIAWG)
+#if defined(APP_VPNSVR) || defined (APP_AMNEZIAWG) || defined (APP_OPENVPN)
 	int found_app_vpnsvr = 1;
 #else
 	int found_app_vpnsvr = 0;
 #endif
-#if defined(APP_VPNCLI) || defined (APP_AMNEZIAWG)
+#if defined(APP_VPNCLI) || defined (APP_AMNEZIAWG) || defined (APP_OPENVPN)
 	int found_app_vpncli = 1;
 #else
 	int found_app_vpncli = 0;
@@ -3221,6 +3221,22 @@ static int ej_get_nvram_list(int eid, webs_t wp, int argc, char **argv) {
 }
 
 // for detect static IP's client.
+/* ng-port: net_iface_list */
+static int ej_net_iface_list(int eid, webs_t wp, int argc, char **argv)
+{
+	DIR *d = opendir("/sys/class/net");
+	struct dirent *e;
+	int first = 1;
+	if (!d) return 0;
+	while ((e = readdir(d)) != NULL) {
+		if (e->d_name[0] == '.' || !strcmp(e->d_name, "lo")) continue;
+		websWrite(wp, "%s\"%s\"", first ? "" : ",", e->d_name);
+		first = 0;
+	}
+	closedir(d);
+	return 0;
+}
+
 static int ej_get_static_client(int eid, webs_t wp, int argc, char **argv)
 {
 	FILE *fp;
@@ -4363,6 +4379,7 @@ struct mime_handler mime_handlers[] = {
 
 	/* cached css  */
 	{ "**.css", "text/css", NULL, NULL, do_file, 0 }, // 2012.06 Eagle23
+	{ "**.json", "application/json", NULL, NULL, do_file, 0 },
 
 #if defined(APP_ARIA)
 	/* cached font */
@@ -4647,6 +4664,7 @@ struct ej_handler ej_handlers[] =
 	{ "get_parameter", ej_get_parameter},
 	{ "get_nvram_list", ej_get_nvram_list},
 	{ "get_flash_time", ej_get_flash_time},
+	{ "net_iface_list", ej_net_iface_list},
 	{ "get_static_client", ej_get_static_client},
 	{ "get_static_ccount", ej_get_static_ccount},
 #ifndef WEBUI_HIDE_VPN

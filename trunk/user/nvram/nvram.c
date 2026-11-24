@@ -37,6 +37,9 @@
 #include <bcmnvram.h>
 
 #include <nvram_linux.h>
+#ifndef NVRAM_MAX_VALUE_LEN
+#define NVRAM_MAX_VALUE_LEN 4096
+#endif
 
 #define PROFILE_HEADER		"HDR1"
 #define PROFILE_HEADER_NEW	"HDR2"
@@ -269,7 +272,7 @@ main(int argc, char **argv)
 		}
 		else if (!strcmp(*argv, "settmp")) {
 			if (*++argv) {
-				char buf[1024];
+				char buf[NVRAM_MAX_VALUE_LEN];
 				strncpy(value = buf, *argv, sizeof(buf)-1);
 				name = strsep(&value, "=");
 				nvram_set_temp(name, value);
@@ -277,7 +280,7 @@ main(int argc, char **argv)
 		}
 		else if (!strcmp(*argv, "set")) {
 			if (*++argv) {
-				char buf[1024];
+				char buf[NVRAM_MAX_VALUE_LEN];
 				strncpy(value = buf, *argv, sizeof(buf)-1);
 				name = strsep(&value, "=");
 				nvram_set(name, value);

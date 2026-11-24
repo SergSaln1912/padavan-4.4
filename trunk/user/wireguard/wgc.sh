@@ -97,7 +97,7 @@ prepare_wg()
 {
     modprobe -q $MODULE
 
-    sysctl -q net.ipv4.conf.all.src_valid_mark=1
+    sysctl -q net.ipv4.conf.all.src_valid_mark=1 2>/dev/null
     sysctl -q net.ipv6.conf.all.disable_ipv6=0 2>/dev/null
     sysctl -q net.ipv6.conf.all.forwarding=1 2>/dev/null
 }
@@ -108,6 +108,12 @@ wg_setdns()
 
     nvram set vpnc_dns_t="$IF_DNS"
     update_resolvconf
+    # ng-port: DNS через туннель (внешние DNS из resolv.conf идут в $IF_NAME)
+    for _s in $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}'); do
+        case "$_s" in 127.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|*:*) continue ;; esac
+        ip route replace $_s/32 dev $IF_NAME 2>/dev/null
+    done
+    killall -HUP dnsmasq 2>/dev/null
 }
 
 check_endpoint()
@@ -228,7 +234,7 @@ add_default_route()
 add_route()
 {
     # ¯\_(ツ)_/¯
-    sync && sysctl -q vm.drop_caches=3
+    sync && sysctl -q vm.drop_caches=3 2>/dev/null
     sleep 1
 
     add_default_route
@@ -250,6 +256,9 @@ wg_if_init()
 
     ip link add dev $IF_NAME type $MODULE 2>/dev/null || error "cannot create $IF_NAME"
     ip link set dev $IF_NAME mtu $IF_MTU
+    # ng-port: rp_filter=0 (ответы из туннеля для клиентов LAN, иначе отбрасываются)
+    echo 0 > /proc/sys/net/ipv4/conf/all/rp_filter 2>/dev/null
+    echo 0 > /proc/sys/net/ipv4/conf/$IF_NAME/rp_filter 2>/dev/null
 
     for i in $IF_ADDR; do
         p=4; [ "$i" != "${i#*:}" ] && p=6

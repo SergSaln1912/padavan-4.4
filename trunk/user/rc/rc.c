@@ -213,6 +213,7 @@ load_ipset_modules(void)
 	module_smart_load("ip_set_hash_ip", NULL);
 	module_smart_load("ip_set_hash_mac", NULL);
 	module_smart_load("ip_set_hash_net", NULL);
+	module_smart_load("ip_set_list_set", NULL);
 }
 #endif
 
@@ -1821,6 +1822,9 @@ main(int argc, char **argv)
 		}
 	}
 #if defined (USE_USB_SUPPORT)
+	else if (!strcmp(base, "update_resolvconf")) {
+		update_resolvconf(0, 0);
+	}
 	else if (!strcmp(base, "ejusb")) {
 		int port = 0;
 		char *devn = NULL;

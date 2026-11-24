@@ -36,7 +36,7 @@ $j(document).ready(function() {
 <% login_state_hook(); %>
 
 var ipmonitor = [<% get_static_client(); %>];
-let IPSetList = [<% get_ipset_list_hook(); %>];
+let IPSetList = [];
 
 function initial(){
 	show_banner(1);

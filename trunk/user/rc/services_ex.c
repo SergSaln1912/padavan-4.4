@@ -297,11 +297,16 @@ start_dns_dhcpd(int is_ap_mode)
 	char dhcp_start[32], dhcp_end[32], dns_all[64], dnsv6[40];
 	char *ipaddr, *netmask, *gw, *dns1, *dns2, *dns3, *wins, *domain, *dns6, *dns61;
 	const char *storage_dir = "/etc/storage/dnsmasq";
+	int no_resolv;
+	char nvram_key[32];
+	char *ipaddr_t, *dnsproxy_listen_addr, *srv_addr[2];
 
 	i_dhcp_enable = is_dhcpd_enabled(is_ap_mode);
 	i_verbose = nvram_get_int("dhcp_verbose");
 
 	ipaddr  = nvram_safe_get("lan_ipaddr");
+	ipaddr_t = nvram_safe_get("lan_ipaddr_t");
+	if (strlen(ipaddr_t) < 7) ipaddr_t = ipaddr;
 	netmask = nvram_safe_get("lan_netmask");
 	domain  = nvram_safe_get("lan_domain");
 
@@ -338,6 +343,117 @@ start_dns_dhcpd(int is_ap_mode)
 	if (!is_ap_mode) {
 		/* listen DNS queries from clients of VPN server */
 		fprintf(fp, "listen-address=%s\n", ipaddr);
+
+		/* don't use resolv-file to resolve DNS queries if doh_proxy, stubby or dnscrypt-proxy is enabled */
+		no_resolv = 0;
+#if defined(APP_DNSCRYPT)
+		if (nvram_match("dnscrypt_enable", "1" ) && nvram_match("dnscrypt_mode", "1"))
+		{
+			dnsproxy_listen_addr = "127.0.0.1";
+			if (nvram_get_int("dnscrypt_listen_mode") == 1)
+				dnsproxy_listen_addr = ipaddr_t;
+
+			for (int i = 0; i <= 3; i++)
+			{
+				snprintf(nvram_key, sizeof(nvram_key), "dnscrypt_resolver%d", i);
+				if ( strlen(nvram_safe_get(nvram_key)) > 2 )
+				{
+					fprintf(fp, "server=%s#%d\n", dnsproxy_listen_addr, nvram_get_int("dnscrypt_listen_port") + i);
+					no_resolv = 1;
+				}
+			}
+		}
+#endif
+#if defined(APP_STUBBY)
+		if (nvram_match("stubby_enable", "1") && (nvram_match("stubby_mode", "1" ) || nvram_match("stubby_mode", "3" )))
+		{
+			dnsproxy_listen_addr = "127.0.0.1";
+			if (nvram_get_int("stubby_listen_mode") == 1)
+				dnsproxy_listen_addr = ipaddr_t;
+
+			for (int i = 0; i <= 3; i++)
+			{
+				snprintf(nvram_key, sizeof(nvram_key), "stubby_server%d", i);
+				srv_addr[0] = nvram_safe_get(nvram_key);
+				snprintf(nvram_key, sizeof(nvram_key), "stubby_server_ip%d", i);
+				srv_addr[1] = nvram_safe_get(nvram_key);
+				if ( strlen(srv_addr[0]) > 2 && strlen(srv_addr[1]) > 6)
+				{
+					fprintf(fp, "server=%s#%d\n", dnsproxy_listen_addr, nvram_get_int("stubby_listen_port"));
+					no_resolv = 1;
+					break;
+				}
+			}
+		}
+#endif
+#if defined(APP_DOH)
+		if (nvram_match("doh_enable", "1" ) && nvram_match("doh_mode", "1"))
+		{
+			dnsproxy_listen_addr = "127.0.0.1";
+			if (nvram_get_int("doh_listen_mode") == 1)
+				dnsproxy_listen_addr = ipaddr_t;
+
+			for (int i = 0; i <= 3; i++)
+			{
+				snprintf(nvram_key, sizeof(nvram_key), "doh_server%d", i);
+				if ( strlen(nvram_safe_get(nvram_key)) > 2 )
+				{
+					fprintf(fp, "server=%s#%d\n", dnsproxy_listen_addr, nvram_get_int("doh_listen_port") + i);
+					no_resolv = 1;
+				}
+			}
+		}
+#endif
+		if (no_resolv)
+		{
+			fprintf(fp, "no-resolv\n");
+
+			// use the provider's first dns address for ntp, bypassing DoT/DoH/DNSCrypt
+			// or first static dns address
+			char word[256], *next, *wan_dns, *dns_name = {0};
+			int dns_static = get_wan_dns_static();
+
+			if (dns_static) {
+				char dns_name_x[16];
+
+				for (int i = 1; i <= 3; i++) {
+					sprintf(dns_name_x, "wan_dns%d_x", i);
+					wan_dns = nvram_safe_get(dns_name_x);
+					if (is_valid_ipv4(wan_dns)) {
+						dns_name = wan_dns;
+						break;
+					}
+				}
+			} else {
+				wan_dns = get_wan_unit_value(0, "dns");
+
+				if (strlen(wan_dns) < 7)
+					wan_dns = nvram_safe_get("wanx_dns");
+
+				foreach(word, wan_dns, next) {
+					if (is_valid_ipv4(word)) {
+						dns_name = word;
+						break;
+					}
+				}
+			}
+
+			// fallback dns
+			if (!is_valid_ipv4(dns_name))
+				dns_name = "8.8.8.8";
+
+			srv_addr[0] = nvram_safe_get("ntp_server0");
+			srv_addr[1] = nvram_safe_get("ntp_server1");
+
+			if (strlen(srv_addr[0]) > 2)
+			{
+				fprintf(fp, "server=/%s/%s\n", srv_addr[0], dns_name);
+			}
+			if (strlen(srv_addr[1]) > 2)
+			{
+				fprintf(fp, "server=/%s/%s\n", srv_addr[1], dns_name);
+			}
+		}
 	}
 	if (!is_ap_mode && nvram_match("dhcp_filter_aaaa", "1")) {
 		/* Don't include IPv6 addresses in DNS answers */

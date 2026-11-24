@@ -608,6 +608,24 @@ void stop_sqm(void);
 void start_sqm(void);
 void restart_sqm(void);
 #endif
+#if defined(APP_DOH)
+int is_doh_run(void);
+void stop_doh(void);
+int start_doh(void);
+void restart_doh(void);
+#endif
+#if defined(APP_STUBBY)
+int is_stubby_run(void);
+void stop_stubby(void);
+int start_stubby(void);
+void restart_stubby(void);
+#endif
+#if defined(APP_DNSCRYPT)
+int is_dnscrypt_run(void);
+void stop_dnscrypt(void);
+void start_dnscrypt(void);
+void restart_dnscrypt(void);
+#endif
 #if defined(APP_WIREGUARD)
 void stop_wireguard(void);
 void start_wireguard(void);

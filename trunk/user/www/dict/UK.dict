@@ -1742,3 +1742,4 @@ OVPN_COMPRESS_Item1=Ні (та отримувати з сервера)
 OVPN_COMPRESS_Item2=Так, стиснення LZ0
 OVPN_COMPRESS_Item3=Так, стиснення LZ4
 OVPN_COMPRESS_Item4=Так, стиснення LZ4-v2
+Adm_Svc_doh=Сервіс DNS-over-HTTPS

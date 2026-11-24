@@ -2521,6 +2521,26 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_sshd = 0;
 #endif
+#if defined(APP_DOH)
+	int found_app_doh = 1;
+#else
+	int found_app_doh = 0;
+#endif
+#if defined(APP_QUIC)
+	int found_app_quic = 1;
+#else
+	int found_app_quic = 0;
+#endif
+#if defined(APP_STUBBY)
+	int found_app_stubby = 1;
+#else
+	int found_app_stubby = 0;
+#endif
+#if defined(APP_DNSCRYPT)
+	int found_app_dnscrypt = 1;
+#else
+	int found_app_dnscrypt = 0;
+#endif
 #if defined(APP_SCUT)
 	int found_app_scutclient = 1;
 #else
@@ -2802,6 +2822,10 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function found_srv_u2ec() { return %d;}\n"
 		"function found_srv_lprd() { return %d;}\n"
 		"function found_app_sshd() { return %d;}\n"
+		"function found_app_doh() { return %d;}\n"
+		"function found_app_quic() { return %d;}\n"
+		"function found_app_stubby() { return %d;}\n"
+		"function found_app_dnscrypt() { return %d;}\n"
 		"function found_app_scutclient() { return %d;}\n"
 		"function found_app_ttyd() { return %d;}\n"
 		"function found_app_vlmcsd() { return %d;}\n"
@@ -2840,6 +2864,10 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_srv_u2ec,
 		found_srv_lprd,
 		found_app_sshd,
+		found_app_doh,
+		found_app_quic,
+		found_app_stubby,
+		found_app_dnscrypt,
 		found_app_scutclient,
 		found_app_ttyd,
 		found_app_vlmcsd,
@@ -4425,6 +4453,10 @@ struct mime_handler mime_handlers[] = {
 	{ "upgrade.cgi*",    "text/html", no_cache_IE, do_upgrade_fw_post, do_upgrade_fw_cgi, 1 },
 	{ "restore_nv.cgi*", "text/html", no_cache_IE, do_restore_nv_post, do_restore_nv_cgi, 1 },
 	{ "restore_st.cgi*", "text/html", no_cache_IE, do_restore_st_post, do_restore_st_cgi, 1 },
+#if defined(APP_DNSCRYPT)
+	/* DNSCrypt proxy resolvers file */
+	{ "**.csv", "text/csv", NULL, NULL, do_file, 0 },
+#endif
 
 	{ NULL, NULL, NULL, NULL, NULL, 0 }
 };

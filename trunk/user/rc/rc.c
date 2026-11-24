@@ -772,6 +772,16 @@ init_router(void)
 	start_wins();
 #endif
 
+#if defined(APP_DOH)
+	start_doh();
+#endif
+#if defined(APP_STUBBY)
+	start_stubby();
+#endif
+#if defined(APP_DNSCRYPT)
+	start_dnscrypt();
+#endif
+
 	if (!is_ap_mode) {
 		ipt_nat_default();
 		ipt_filter_default();
@@ -1100,6 +1110,24 @@ handle_notifications(void)
 			restart_sshd();
 		}
 #endif
+#if defined(APP_DOH)
+		else if (strcmp(entry->d_name, RCN_RESTART_DOH) == 0)
+		{
+			restart_doh();
+		}
+#endif
+#if defined(APP_STUBBY)
+		else if (strcmp(entry->d_name, RCN_RESTART_STUBBY) == 0)
+		{
+			restart_stubby();
+		}
+#endif
+#if defined(APP_DNSCRYPT)
+		else if (strcmp(entry->d_name, RCN_RESTART_DNSCRYPT) == 0)
+		{
+			restart_dnscrypt();
+		}
+#endif
 #if defined(APP_SCUT)
 		else if (strcmp(entry->d_name, RCN_RESTART_SCUT) == 0)
 		{
@@ -1349,6 +1377,15 @@ handle_notifications(void)
 		else if (strcmp(entry->d_name, RCN_RESTART_NTPC) == 0)
 		{
 			notify_watchdog_time();
+#if defined(APP_DNSCRYPT) || defined(APP_STUBBY) || defined(APP_DOH)
+			// updating time servers records in dnsmasq for ntp bypassing DoT/DoH/DNSCrypt
+			if (nvram_match("dnscrypt_enable", "1")
+				|| nvram_match("stubby_enable", "1")
+				|| nvram_match("doh_enable", "1"))
+			{
+				restart_dhcpd();
+			}
+#endif
 		}
 		else if (strcmp(entry->d_name, RCN_RESTART_TIME) == 0)
 		{

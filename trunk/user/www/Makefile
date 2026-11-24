@@ -27,6 +27,9 @@ romfs:
 	rm -f $(ROMFS_DIR)/www/httpd_check.htm
 	echo "ASUSTeK" > $(ROMFS_DIR)/www/httpd_check.htm
 	cd $(ROMFS_DIR)/www && ln -sf /opt/share/www/custom custom
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_DNSCRYPT),y)
+	cd $(ROMFS_DIR)/www && ln -sf /usr/share/dnscrypt-proxy/dnscrypt-resolvers.csv dnscrypt-resolvers.csv
+endif
 	cp dict/EN.header $(ROMFS_DIR)/www
 ifeq ($(CONFIG_FIRMWARE_INCLUDE_LANG_BR),y)
 	echo "LANG_BR=Brazil" >> $(ROMFS_DIR)/www/EN.header
@@ -233,6 +236,15 @@ ifneq ($(CONFIG_FIRMWARE_INCLUDE_SQM),y)
 endif
 ifneq ($(CONFIG_FIRMWARE_INCLUDE_SMARTDNS),y)
 	rm -f $(INSTALLDIR)/www/Advanced_smartdns.asp
+endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_DNSCRYPT),y)
+	rm -f $(INSTALLDIR)/www/Advanced_Services_DNSCrypt.asp
+endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_DOH),y)
+	rm -f $(INSTALLDIR)/www/Advanced_Services_DoH.asp
+endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_STUBBY),y)
+	rm -f $(INSTALLDIR)/www/Advanced_Services_DoT.asp
 endif
 # ng-port: openvpn pages
 ifeq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_SERVER) $(CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG) $(CONFIG_FIRMWARE_INCLUDE_OPENVPN)))

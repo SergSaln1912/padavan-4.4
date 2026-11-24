@@ -233,6 +233,98 @@ restart_sshd(void)
 }
 #endif
 
+#if defined(APP_DOH)
+int is_doh_run(void)
+{
+	if (check_if_file_exist("/usr/sbin/https_dns_proxy"))
+	{
+		if (pids("https_dns_proxy"))
+			return 1;
+	}
+	return 0;
+}
+
+void stop_doh(void)
+{
+	eval("/usr/bin/doh_proxy.sh", "stop");
+}
+
+int start_doh(void)
+{
+	if (!get_ap_mode() && nvram_get_int("doh_enable") == 1)
+		return eval("/usr/bin/doh_proxy.sh", "start");
+
+	return 0;
+}
+
+void restart_doh(void)
+{
+	stop_doh();
+	start_doh();
+}
+#endif
+#if defined(APP_STUBBY)
+int is_stubby_run(void)
+{
+	if (check_if_file_exist("/usr/sbin/stubby"))
+	{
+		if (pids("stubby"))
+			return 1;
+	}
+	return 0;
+}
+
+void stop_stubby(void)
+{
+	eval("/usr/bin/stubby.sh", "stop");
+}
+
+int start_stubby(void)
+{
+	if (!get_ap_mode() && nvram_get_int("stubby_enable") == 1)
+		return eval("/usr/bin/stubby.sh", "start");
+
+	return 0;
+}
+
+void restart_stubby(void)
+{
+	stop_stubby();
+	start_stubby();
+}
+#endif
+#if defined(APP_DNSCRYPT)
+int
+is_dnscrypt_run(void)
+{
+	if (check_if_file_exist("/usr/sbin/dnscrypt-proxy"))
+	{
+		if (pids("dnscrypt-proxy"))
+			return 1;
+	}
+	return 0;
+}
+
+void
+stop_dnscrypt(void)
+{
+	eval("/usr/bin/dnscrypt-proxy.sh", "stop");
+}
+
+void
+start_dnscrypt(void)
+{
+	if (!get_ap_mode() && nvram_get_int("dnscrypt_enable") == 1)
+		eval("/usr/bin/dnscrypt-proxy.sh", "start");
+}
+
+void
+restart_dnscrypt(void)
+{
+	stop_dnscrypt();
+	start_dnscrypt();
+}
+#endif
 #if defined(APP_SCUT)
 int is_scutclient_run(void)
 {
@@ -928,6 +1020,16 @@ stop_services(int stopall)
 #endif
 #if defined(APP_FRP)
 	stop_frp();
+#endif
+/* ng-port: DNS-прокси */
+#if defined(APP_DOH)
+	stop_doh();
+#endif
+#if defined(APP_STUBBY)
+	stop_stubby();
+#endif
+#if defined(APP_DNSCRYPT)
+	stop_dnscrypt();
 #endif
 	stop_networkmap();
 	stop_lltd();

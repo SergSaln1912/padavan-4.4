@@ -541,6 +541,43 @@
 			{"ftpd_wport", "", NULL, EVM_RESTART_FIREWALL},
 			{"sshd_wopen", "", NULL, EVM_RESTART_FIREWALL},
 			{"sshd_wbfp", "", NULL, EVM_RESTART_FIREWALL},
+#if defined(APP_DOH)
+			{"doh_enable", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_server0", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_server1", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_server2", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_server3", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_quic", "", NULL, EVM_RESTART_DOH},
+			{"doh_bootstrap_dns", "", NULL, EVM_RESTART_DOH},
+			{"doh_listen_port", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_listen_mode", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+			{"doh_mode", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
+#endif
+#if defined(APP_STUBBY)
+			{"stubby_enable", "", NULL, EVM_RESTART_STUBBY|EVM_RESTART_DHCPD},
+			{"stubby_server0", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server1", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server2", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server3", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server_ip0", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server_ip1", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server_ip2", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_server_ip3", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_listen_port", "", NULL, EVM_RESTART_STUBBY|EVM_RESTART_DHCPD},
+			{"stubby_listen_mode", "", NULL, EVM_RESTART_STUBBY|EVM_RESTART_DHCPD},
+			{"stubby_round_robin", "", NULL, EVM_RESTART_STUBBY},
+			{"stubby_mode", "", NULL, EVM_RESTART_STUBBY|EVM_RESTART_DHCPD},
+#endif
+#if defined(APP_DNSCRYPT)
+			{"dnscrypt_enable", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_resolver0", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_resolver1", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_resolver2", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_resolver3", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_listen_mode", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_listen_port", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+			{"dnscrypt_mode", "", NULL, EVM_RESTART_DNSCRYPT|EVM_RESTART_DHCPD},
+#endif
 			{"sshd_wport", "", NULL, EVM_RESTART_FIREWALL},
 			{"trmd_ropen", "", NULL, EVM_RESTART_FIREWALL},
 			{"aria_ropen", "", NULL, EVM_RESTART_FIREWALL},
@@ -1495,6 +1532,15 @@
 		{EVM_RESTART_VPNCLI,	EVT_RESTART_VPNCLI,		RCN_RESTART_VPNCLI,	EVM_RESTART_FIREWALL},
 		{EVM_RESTART_HTTPD,		EVT_RESTART_HTTPD,		RCN_RESTART_HTTPD,	EVM_RESTART_FIREWALL},
 		{EVM_RESTART_SSHD,		EVT_RESTART_SSHD,		RCN_RESTART_SSHD,	EVM_RESTART_FIREWALL},
+#if defined(APP_DOH)
+		{EVM_RESTART_DOH,		EVT_RESTART_DOH,		RCN_RESTART_DOH,	EVM_RESTART_FIREWALL},
+#endif
+#if defined(APP_STUBBY)
+		{EVM_RESTART_STUBBY,		EVT_RESTART_STUBBY,		RCN_RESTART_STUBBY,	EVM_RESTART_FIREWALL},
+#endif
+#if defined(APP_DNSCRYPT)
+		{EVM_RESTART_DNSCRYPT,		EVT_RESTART_DNSCRYPT,		RCN_RESTART_DNSCRYPT,	EVM_RESTART_FIREWALL},
+#endif
 		{EVM_RESTART_TELNETD,		EVT_RESTART_TELNETD,		RCN_RESTART_TELNETD,	0},
 #if defined(APP_SMBD) || defined(APP_NMBD)
 		{EVM_RESTART_WINS,		EVT_RESTART_WINS,		RCN_RESTART_WINS,	EVM_RESTART_DHCPD|EVM_RESTART_NMBD|EVM_REAPPLY_VPNSVR},

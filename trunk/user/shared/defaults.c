@@ -35,6 +35,42 @@ struct nvram_pair router_defaults[] = {
 	/* Miscellaneous parameters */
 	{ "time_zone", DEF_TIMEZONE },
 	{ "preferred_lang", "EN" },
+#if defined (APP_DOH)
+	{ "doh_enable", "0" },
+	{ "doh_server0", "https://dns.google/dns-query" },
+	{ "doh_server1", "" },
+	{ "doh_server2", "" },
+	{ "doh_server3", "" },
+	{ "doh_quic", "0" },
+	{ "doh_bootstrap_dns", "1.1.1.1,8.8.8.8,9.9.9.9,208.67.222.222,77.88.8.8" },
+	{ "doh_listen_port", "5053" },
+	{ "doh_listen_mode", "0" },
+	{ "doh_mode", "1" },
+#endif
+#if defined (APP_STUBBY)
+	{ "stubby_enable", "0" },
+	{ "stubby_server0", "dns.google" },
+	{ "stubby_server1", "" },
+	{ "stubby_server2", "" },
+	{ "stubby_server3", "" },
+	{ "stubby_server_ip0", "8.8.8.8" },
+	{ "stubby_server_ip1", "" },
+	{ "stubby_server_ip2", "" },
+	{ "stubby_listen_port", "5453" },
+	{ "stubby_listen_mode", "0" },
+	{ "stubby_round_robin", "1" },
+	{ "stubby_mode", "1" },
+#endif
+#if defined (APP_DNSCRYPT)
+	{ "dnscrypt_enable", "0" },
+	{ "dnscrypt_resolver0", "cisco" },
+	{ "dnscrypt_resolver1", "" },
+	{ "dnscrypt_resolver2", "" },
+	{ "dnscrypt_resolver3", "" },
+	{ "dnscrypt_listen_mode", "0" },
+	{ "dnscrypt_listen_port", "65053" },
+	{ "dnscrypt_mode", "1" },
+#endif
 	{ "log_float_ui", "0" },		/* WebUI syslog float panel mode */
 	{ "log_ipaddr", "" },			/* syslog recipient IP */
 	{ "log_port", "514" },			/* syslog recipient Port */

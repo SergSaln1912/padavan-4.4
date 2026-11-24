@@ -512,6 +512,11 @@ ntpc_updated_main(int argc, char *argv[])
 		system("hwclock -w");
 #endif
 		logmessage("NTP Client", "System time changed, offset: %ss", offset);
+		if (atoi(offset) > 86400) { /* more than one day */
+			notify_rc(RCN_RESTART_DOH);
+			notify_rc(RCN_RESTART_STUBBY);
+			notify_rc(RCN_RESTART_DNSCRYPT);
+		}
 		sleep(5);
 		nvram_set_int("ntp_ready", 1);
 	}

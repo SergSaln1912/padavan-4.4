@@ -102,17 +102,25 @@ prepare_wg()
     sysctl -q net.ipv6.conf.all.forwarding=1 2>/dev/null
 }
 
+# ng-port: dns-routes v2
+# Внешние DNS из /etc/resolv.conf (статические WAN, DNS туннеля) идут через интерфейс туннеля:
+# иначе провайдер портит ответы для заблокированных и служебных доменов (ТВ, приставки).
+ng_dns_routes()
+{
+    [ "$IF_NAME" ] || return
+    for _s in $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}'); do
+        case "$_s" in 127.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|*:*) continue ;; esac
+        ip route replace $_s/32 dev $IF_NAME 2>/dev/null
+    done
+}
+
 wg_setdns()
 {
     [ "$IF_DNS" ] || return
 
     nvram set vpnc_dns_t="$IF_DNS"
     update_resolvconf
-    # ng-port: DNS через туннель (внешние DNS из resolv.conf идут в $IF_NAME)
-    for _s in $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}'); do
-        case "$_s" in 127.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|*:*) continue ;; esac
-        ip route replace $_s/32 dev $IF_NAME 2>/dev/null
-    done
+    ng_dns_routes
     killall -HUP dnsmasq 2>/dev/null
 }
 
@@ -391,6 +399,7 @@ start_wg()
         connect_wg
         add_route
         wg_setdns
+        ng_dns_routes
         start_fw
 
         call_post_script start
@@ -411,6 +420,7 @@ watchdog()
 
         is_started || return
 
+        ng_dns_routes
         connect_wg reconnect
         call_post_script watchdog
 

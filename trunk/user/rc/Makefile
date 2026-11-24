@@ -93,6 +93,7 @@ romfs:
 	cd $(INSTALLDIR)/sbin && ln -sf rc ntpc_syncnow
 	cd $(INSTALLDIR)/sbin && ln -sf rc start_ddns
 	cd $(INSTALLDIR)/sbin && ln -sf rc restart_dns
+	cd $(INSTALLDIR)/sbin && ln -sf rc update_resolvconf
 	cd $(INSTALLDIR)/sbin && ln -sf rc restart_dhcpd
 	cd $(INSTALLDIR)/sbin && ln -sf rc restart_vpn_server
 	cd $(INSTALLDIR)/sbin && ln -sf rc restart_vpn_client
@@ -206,7 +207,6 @@ ifdef CONFIG_USB_SUPPORT
 	cd $(INSTALLDIR)/sbin && ln -sf rc mdev_wdm
 	cd $(INSTALLDIR)/sbin && ln -sf rc zerocd
 	cd $(INSTALLDIR)/sbin && ln -sf rc usb5v
-	cd $(INSTALLDIR)/sbin && ln -sf rc update_resolvconf
 	cd $(INSTALLDIR)/sbin && ln -sf rc ejusb
 	cd $(INSTALLDIR)/sbin && ln -sf rc ejusb1
 ifneq ($(BOARD_NUM_USB_PORTS),1)

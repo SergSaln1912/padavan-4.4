@@ -320,16 +320,21 @@ def update_resolvconf_cmd():
                          + ind + '\tupdate_resolvconf(0, 0);\n' + ind + '}\n')
                 s = s[:m.start()] + block + s[m.start():]
                 wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      rc.c: добавлен обработчик update_resolvconf")
+    # Ссылка должна ставиться БЕЗУСЛОВНО: блок с ejusb собирается только при CONFIG_USB_SUPPORT,
+    # а в RM2100 USB выключен -> команды update_resolvconf в образе не было. Старую (ошибочную) строку убираем.
     rel = "trunk/user/rc/Makefile"; p = os.path.join(REPO, rel)
     if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
     raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
-    if re.search(r"ln -sf rc update_resolvconf\b", s):
-        print("уже есть     rc/Makefile: ссылка update_resolvconf"); return
-    m = re.search(r"^([ \t]*)cd \$\(INSTALLDIR\)/sbin && ln -sf rc ejusb[ \t]*$", s, re.M)
-    if not m: print("НЕ НАЙДЕНО   rc/Makefile: место для ссылки (ejusb)"); return
-    line = m.group(1) + "cd $(INSTALLDIR)/sbin && ln -sf rc update_resolvconf\n"
-    s = s[:m.start()] + line + s[m.start():]
-    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      rc/Makefile: ссылка update_resolvconf")
+    link = re.compile(r"^[ \t]*cd \$\(INSTALLDIR\)/sbin && ln -sf rc update_resolvconf[ \t]*\n", re.M)
+    anchor = re.search(r"^([ \t]*)cd \$\(INSTALLDIR\)/sbin && ln -sf rc restart_dns[ \t]*\n", s, re.M)
+    if not anchor: print("НЕ НАЙДЕНО   rc/Makefile: место для ссылки (restart_dns)"); return
+    nxt = s[anchor.end():anchor.end()+80]
+    if len(link.findall(s)) == 1 and nxt.lstrip().startswith("cd $(INSTALLDIR)/sbin && ln -sf rc update_resolvconf"):
+        print("уже есть     rc/Makefile: ссылка update_resolvconf (безусловная)"); return
+    s = link.sub("", s)
+    anchor = re.search(r"^([ \t]*)cd \$\(INSTALLDIR\)/sbin && ln -sf rc restart_dns[ \t]*\n", s, re.M)
+    s = s[:anchor.end()] + anchor.group(1) + "cd $(INSTALLDIR)/sbin && ln -sf rc update_resolvconf\n" + s[anchor.end():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      rc/Makefile: ссылка update_resolvconf (безусловно, после restart_dns)")
 update_resolvconf_cmd()
 
 # ---------------------------------------------------------------- 17. httpd: отдача *.json (amneziawg.json)
@@ -415,19 +420,108 @@ def wgc_dns_routes():
     rel = "trunk/user/wireguard/wgc.sh"; p = os.path.join(REPO, rel)
     if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
     raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
-    if "ng-port: DNS через туннель" in s: print("уже есть     wgc.sh: маршруты DNS через туннель"); return
+    if "ng-port: dns-routes v2" in s: print("уже есть     wgc.sh: маршруты DNS через туннель (v2)"); return
+    s = re.sub(r"[ \t]*# ng-port: DNS через туннель \(внешние DNS из resolv\.conf идут в \$IF_NAME\)\n"
+               r"(?:.*\n){0,6}?[ \t]*killall -HUP dnsmasq 2>/dev/null\n", "", s)
+    func = ("# ng-port: dns-routes v2\n"
+            "# Внешние DNS из /etc/resolv.conf (статические WAN, DNS туннеля) идут через интерфейс туннеля:\n"
+            "# иначе провайдер портит ответы для заблокированных и служебных доменов (ТВ, приставки).\n"
+            "ng_dns_routes()\n{\n"
+            "    [ \"$IF_NAME\" ] || return\n"
+            "    for _s in $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}'); do\n"
+            "        case \"$_s\" in 127.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|*:*) continue ;; esac\n"
+            "        ip route replace $_s/32 dev $IF_NAME 2>/dev/null\n"
+            "    done\n"
+            "}\n\n")
+    m = re.search(r'^wg_setdns\(\)\n', s, re.M)
+    if not m: print("НЕ НАЙДЕНО   wgc.sh: wg_setdns()"); return
+    s = s[:m.start()] + func + s[m.start():]
     m = re.search(r'^([ \t]*)update_resolvconf[ \t]*\n', s, re.M)
-    if not m: print("НЕ НАЙДЕНО   wgc.sh: вызов update_resolvconf"); return
-    i = m.group(1)
-    block = (i + "# ng-port: DNS через туннель (внешние DNS из resolv.conf идут в $IF_NAME)\n"
-             + i + "for _s in $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}'); do\n"
-             + i + "    case \"$_s\" in 127.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|*:*) continue ;; esac\n"
-             + i + "    ip route replace $_s/32 dev $IF_NAME 2>/dev/null\n"
-             + i + "done\n"
-             + i + "killall -HUP dnsmasq 2>/dev/null\n")
-    s = s[:m.end()] + block + s[m.end():]
-    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      wgc.sh: маршруты внешних DNS через $IF_NAME")
+    if m: s = s[:m.end()] + m.group(1) + "ng_dns_routes\n" + m.group(1) + "killall -HUP dnsmasq 2>/dev/null\n" + s[m.end():]
+    m = re.search(r'^([ \t]*)wg_setdns[ \t]*\n', s, re.M)
+    if m: s = s[:m.end()] + m.group(1) + "ng_dns_routes\n" + s[m.end():]
+    m = re.search(r'^([ \t]*)connect_wg reconnect[ \t]*\n', s, re.M)
+    if m: s = s[:m.start()] + m.group(1) + "ng_dns_routes\n" + s[m.start():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      wgc.sh: ng_dns_routes (старт и watchdog)")
 wgc_dns_routes()
+
+# ---------------------------------------------------------------- 25. wgc.sh: DNS туннеля поверх DNS провайдера
+# Загрузка и подъём туннеля идут с DNS провайдера/WAN (resolv.conf от WAN). Когда туннель поднят, wgc.sh
+# подставляет DNS туннеля из профиля (адреса в прошивку не зашиты; нет DNS в профиле -> ничего не меняется) и только их (vpnc_pdns=2),
+# ng_dns_routes направляет их в туннель. При остановке клиента DNS возвращаются к WAN (провайдера).
+def wgc_tunnel_dns():
+    # По умолчанию ВЫКЛЮЧЕНО (решение пользователя: пока ничего не менять). Включить: NG_TUNNEL_DNS=1 python3 port-build-fixes.py ...
+    if os.environ.get("NG_TUNNEL_DNS") != "1":
+        print("пропущено    wgc.sh: DNS туннеля поверх DNS провайдера (правило 25 выключено; NG_TUNNEL_DNS=1 включает)"); return
+    rel = "trunk/user/wireguard/wgc.sh"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    if "ng-port: tunnel-dns" in s: print("уже есть     wgc.sh: DNS туннеля поверх DNS провайдера"); return
+    m = re.search(r'^wg_setdns\(\)\n\{\n.*?^\}\n', s, re.M | re.S)
+    if not m: print("НЕ НАЙДЕНО   wgc.sh: wg_setdns()"); return
+    body = ('wg_setdns()\n{\n'
+            '    # ng-port: tunnel-dns\n'
+            '    [ "$IF_DNS" ] || return\n'
+            '    _dns="$IF_DNS"\n\n'
+            '    nvram set vpnc_pdns=2\n'
+            '    nvram set vpnc_dns_t="$_dns"\n'
+            '    update_resolvconf\n'
+            '    ng_dns_routes\n'
+            '    killall -HUP dnsmasq 2>/dev/null\n}\n')
+    s = s[:m.start()] + body + s[m.end():]
+    m = re.search(r'^stop_wg\(\)\n\{\n(?:.*\n)*?([ \t]*)stop_fw\n', s, re.M)
+    if not m: print("НЕ НАЙДЕНО   wgc.sh: stop_wg()/stop_fw"); return
+    ind = m.group(1)
+    s = s[:m.end()] + (ind + "# ng-port: tunnel-dns (вернуть DNS провайдера)\n" + ind + 'nvram set vpnc_dns_t=""\n'
+                       + ind + "update_resolvconf\n") + s[m.end():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      wgc.sh: DNS туннеля при старте, DNS провайдера при остановке")
+wgc_tunnel_dns()
+
+# ---------------------------------------------------------------- 26. HNAT: убрать сообщение "mtk_pong_hqos_handler:drop" из лога ядра
+# Пакеты из Wi-Fi, которые не удалось отдать аппаратному ускорению, сбрасываются и раньше попадали в лог (printk_ratelimited).
+# Поведение (NF_DROP) не меняется, отключается только вывод. Возврат: удалить маркер #if 0 / #endif вокруг printk.
+def hnat_quiet_pong():
+    found = False
+    for rel in ("trunk/linux-4.4.x/drivers/net/ethernet/mediatek/mtk_hnat/hnat_nf_hook.c",
+                "trunk/linux-4.4.x/drivers/net/ethernet/raeth/mtk_hnat/hnat_nf_hook.c"):
+        p = os.path.join(REPO, rel)
+        if not os.path.exists(p): continue
+        found = True
+        raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+        if "ng-port: pong drop log off" in s: print("уже есть     %s: сообщение pong drop отключено" % rel); continue
+        a = s.find("mtk_pong_hqos_handler(void *priv")
+        if a < 0: print("НЕ НАЙДЕНО   %s: mtk_pong_hqos_handler" % rel); continue
+        m = re.compile(r"^drop:\n([ \t]*)(printk_ratelimited\(KERN_WARNING\n(?:.*\n)*?.*skb_hnat_alg\(skb\)\);\n)", re.M).search(s, a)
+        if not m or "return NF_DROP" not in s[m.end():m.end()+40]:
+            print("НЕ НАЙДЕНО   %s: printk в drop: pong" % rel); continue
+        new = "drop:\n#if 0 /* ng-port: pong drop log off */\n" + m.group(1) + m.group(2) + "#endif\n"
+        s = s[:m.start()] + new + s[m.end():]
+        wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      %s: сообщение pong drop отключено" % rel)
+    if not found: print("НЕТ ФАЙЛА    hnat_nf_hook.c")
+hnat_quiet_pong()
+
+# ---------------------------------------------------------------- 27. DoH/DoT/DNSCrypt доступны на выбор для всех плат
+# В профилях остальных плат добавляются флаги FIRMWARE_INCLUDE_DNSCRYPT/STUBBY/DOH со значением n (выключено),
+# существующие значения не трогаются. Включить для платы: заменить n на y в trunk/configs/templates/<ПЛАТА>.config.
+# Остальные флаги (Shadowsocks, OpenVPN, язык) в других платах уже есть и остаются как были.
+def dns_flags_all_boards():
+    d = os.path.join(REPO, "trunk/configs/templates")
+    if not os.path.isdir(d): print("НЕТ КАТАЛОГА trunk/configs/templates"); return
+    added = 0; boards = 0
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".config") or fn == "RM2100.config": continue
+        p = os.path.join(d, fn); raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+        miss = [f for f in ("DNSCRYPT", "STUBBY", "DOH")
+                if not re.search(r'^[ \t]*#?[ \t]*CONFIG_FIRMWARE_INCLUDE_%s[= ]' % f, s, re.M)]
+        if not miss: continue
+        add = "".join("CONFIG_FIRMWARE_INCLUDE_%s=n\n" % f for f in miss)
+        m = re.search(r'^[ \t]*#?[ \t]*CONFIG_FIRMWARE_INCLUDE_OPENVPN=.*\n', s, re.M)
+        if m: s = s[:m.end()] + add + s[m.end():]
+        else: s = s.rstrip("\n") + "\n" + add
+        wr(p, s.replace("\n", "\r\n") if crlf else s); added += len(miss); boards += 1
+    print("сделано      профили плат: флаги DNSCRYPT/STUBBY/DOH=n добавлены в %d файлов (%d строк)" % (boards, added) if boards
+          else "уже есть     профили плат: флаги DNSCRYPT/STUBBY/DOH")
+dns_flags_all_boards()
 
 # ---------------------------------------------------------------- вспомогательная: значение CONFIG_* в профиле RM2100.config
 def set_cfg(name, value, note=None):
@@ -491,3 +585,9 @@ def openvpn_pages():
     elif n: print("уже есть     web_ex.c: меню VPN для OpenVPN")
     else: print("НЕ НАЙДЕНО   web_ex.c: блоки found_app_vpnsvr/found_app_vpncli")
 openvpn_pages()
+
+# ---------------------------------------------------------------- 24. DNSCrypt, DoT (stubby), DoH в образе
+# Пакеты, rc/httpd-код, страницы и словари переносит port-dns-services.py; здесь только флаги профиля.
+set_cfg("FIRMWARE_INCLUDE_DNSCRYPT", "y", "DNSCrypt proxy ~0.5MB")
+set_cfg("FIRMWARE_INCLUDE_STUBBY", "y", "Stubby DNS-over-TLS (DoT) ~0.4MB")
+set_cfg("FIRMWARE_INCLUDE_DOH", "y", "doh_proxy DNS-over-HTTPS (DoH) ~0.5MB")

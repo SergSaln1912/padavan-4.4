@@ -1,49 +1,109 @@
-# ng-port: перенос функций padavan-ng на padavan-4.4 (ядро Linux 4.4.198)
+# ng-port: padavan-ng features on padavan-4.4 (Linux 4.4.198)
 
-Ветка `ng-port` форка padavan-4.4 добавляет из padavan-ng: клиент AmneziaWG (AWG 3.1), Zapret/Zapret2, сервисы
-DoH / DoT (stubby) / DNSCrypt, OpenVPN, русский язык, меню «Сервисы». Проверено **только на Redmi AC2100 / RM2100 (MT7621)**.
-Остальные платы сохранены, новые опции для них выключены (включаются заменой `n` на `y` в профиле платы).
+English | [Русский](README.ru.md)
 
-## Что внутри
-- `tools/ng-port/port-build-fixes.py` — идемпотентные правила 1–32, применяются к дереву; повторный запуск ничего не меняет.
-- `tools/ng-port/port-dns-services.py` — перенос DoH, DoT, DNSCrypt, libgetdns, libyaml из padavan-ng.
-- `tools/ng-port/port-dnsmasq.py` (+ `210-max-procs-4.patch` рядом) — обновление dnsmasq 2.90 → 2.93 с regex-патчами из padavan-ng (нужен libpcre).
-- `tools/ng-port/port-ipset.py` — перенос сервиса IPSet (ipset.sh, вкладка «IPSet», dnsmasq.ipset, обновление по таймеру).
-- `tools/ng-port/awg-conf-import.sh` — (на роутере) переносит параметры AWG из `.conf` в nvram.
-- `tools/ng-port/awg-debug.py`, `awg-sniff*`, `port-survey-*.sh` — отладка и обзор дерева.
+The `ng-port` branch of this fork brings features from [padavan-ng](https://github.com/nilabsent/padavan-ng) to
+[padavan-4.4](https://github.com/vb1980/padavan-4.4): the AmneziaWG client (AWG 3.1), Zapret / Zapret2, DNS services
+(DoH, DoT via stubby, DNSCrypt), IPSet service, OpenVPN, Russian language, the "Services" menu, dnsmasq 2.93 with regex,
+and OpenSSL 3.5 LTS.
 
-## Сборка
-Требуется чистая оболочка: **без `STAGEDIR` и без путей padavan-ng в `PATH`/окружении** (иначе пакеты, собираемые autoconf и
-CMake, подхватывают чужие библиотеки: ошибки `libssl.so.3`, падение dnscrypt-proxy при старте).
+**Verified only on Redmi AC2100 / RM2100 (MT7621).** Other boards keep their profiles; new options are present in their
+profiles too, but those boards were not built or tested. Options that are off by default can be switched on by replacing
+`n` with `y` in the board profile (`trunk/configs/templates/<BOARD>.config`).
+
+## What is in `tools/ng-port`
+All scripts are idempotent: a second run changes nothing. They take the two trees as arguments:
+`python3 <script> <path-to-padavan-ng> <path-to-padavan-4.4>` (only `port-build-fixes.py` takes just the 4.4 tree).
+
+| File | Purpose |
+|---|---|
+| `port-build-fixes.py` | Rules 1–33 applied to the tree (AWG, DNS, nvram buffer, HNAT log, reboot after flashing, version with git hash, board profile flags). |
+| `port-dns-services.py` | DoH (https_dns_proxy), DoT (stubby + libgetdns), DNSCrypt, libyaml: packages, rc, httpd, pages, dictionaries. |
+| `port-dnsmasq.py` + `210-max-procs-4.patch` | dnsmasq 2.90 → 2.93 with the ng regex patches (needs libpcre). |
+| `port-ipset.py` | IPSet service: `ipset.sh`, "IPSet" tab, `dnsmasq.ipset` editor, update timer. |
+| `port-openssl.py` | OpenSSL 1.1.1w → 3.5.9 LTS (`libs/libssl/{1.1,3.5}`), internal MD4 for wpa_supplicant. |
+| `awg-conf-import.sh` | (on the router) imports AWG parameters from a `.conf` into nvram. |
+| `awg-debug.py`, `awg-sniff*`, `port-survey-*.sh` | Debugging and tree survey helpers. |
+
+## Build
+The shell must be clean: **no `STAGEDIR` and no padavan-ng paths in `PATH` or the environment**. Otherwise autoconf and
+CMake packages pick up foreign libraries (`libssl.so.3` errors, dnscrypt-proxy crashing at start).
 
 ```bash
 unset STAGEDIR
-cd ~/prometeus/update                                    # рядом лежат padavan-ng и padavan-4.4
+cd ~/prometeus/update                                    # padavan-ng and padavan-4.4 side by side
 python3 padavan-4.4/tools/ng-port/port-build-fixes.py padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-dns-services.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-dnsmasq.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-ipset.py padavan-ng padavan-4.4
+python3 padavan-4.4/tools/ng-port/port-openssl.py padavan-ng padavan-4.4
 cd padavan-4.4 && make RM2100 2>&1 | tee build.log
 ```
 
-Образ: `trunk/images/RM2100_4.4.198.9-100_<хеш>.trx` (хеш — 7 знаков коммита git; без git суффикса нет).
+The image is `trunk/images/RM2100_4.4.198.9-100_<hash>.trx` (the hash is the 7-character git commit; without git there is
+no suffix). After switching environments, remove the build directories and `config_done` of the affected packages
+(libgetdns, stubby, doh_proxy, dnscrypt-proxy), otherwise old settings remain.
 
-Перед пересборкой после смены окружения удалите каталоги сборки пакетов и файл `config_done` у затронутых пакетов
-(libgetdns, stubby, doh_proxy, dnscrypt-proxy), иначе останутся старые настройки.
+### One-time cleanup when moving to OpenSSL 3.5
+`libs/Makefile` installs libraries into `stage` once (markers `stage/.installed_<package>`), so without cleanup the
+OpenSSL 1.1.1 headers and libraries stay in `stage` and dependent packages are not rebuilt.
 
-## Прошивка
-Через веб-интерфейс («Администрирование» → «Обновление микропрограммы»); после записи роутер перезагружается сам.
-После перепрошивки на ПК: `ssh-keygen -R 192.168.1.1`.
+```bash
+cd ~/prometeus/update/padavan-4.4/trunk
+rm -f stage/.installed_libssl stage/.installed_libcurl stage/.installed_libgetdns
+rm -rf stage/include/openssl stage/lib/libssl* stage/lib/libcrypto* stage/lib/pkgconfig/{openssl,libssl,libcrypto}.pc
+for d in libs/libssl libs/libcurl libs/libgetdns user/stubby user/doh_proxy user/openvpn user/inadyn user/wpa_supplicant; do
+    make -C $d clean 2>/dev/null; rm -f $d/config_done
+done
+cd .. && make RM2100 2>&1 | tee build.log
+```
+After the build, `readelf -d` of `stubby`, `https_dns_proxy`, `openvpn`, `wpa_supplicant` and `curl` must show
+`libssl.so.3` / `libcrypto.so.3` (not `.1.1`), and no `padavan-ng` path may appear in any `config.log` / `CMakeCache.txt`.
 
-## Основные правила (кратко)
-- 15: буфер nvram 1024 → NVRAM_MAX_VALUE_LEN (полные параметры I1 AWG).
-- 16, 20: `update_resolvconf` и маршруты до публичных DNS через туннель AWG.
-- 17: **.json отдаёт httpd (веб-импорт параметров AWG).
-- 26: тихий лог HNAT (`mtk_pong_hqos_handler`).
-- 29: `export STAGEDIR` для CMake. 30: перезагрузка после прошивки через `reboot(2)`.
-- 31, 32: версия и имя образа с хешем git.
+## OpenSSL 3.5
+`port-openssl.py` moves all boards to OpenSSL 3.5.9 (LTS until 2030-04-08). The 53 MB tarball is not stored in git: it
+is downloaded at build time from github.com/openssl/openssl/releases and checked against its SHA-256. The old package
+is kept in `libs/libssl/1.1`; a board with `CONFIG_FIRMWARE_INCLUDE_OPENSSL_35=n` (or without the line) builds as before.
 
-## Известные ограничения
-- IPSet: regex-записи в `dnsmasq.ipset` работают при `CONFIG_FIRMWARE_ENABLE_DNSMASQ_REGEX=y` (RM2100); без него в образ ставится вариант `ipset/dnsmasq.ipset.noregex`. Включение сервиса — `ipset_enable` на вкладке «IPSet» (по умолчанию выключено). Вкладка Service8 пустая, как в ng.
-- Правило 25 (DNS туннеля) выключено по умолчанию (`NG_TUNNEL_DNS=1` включает). Адреса DNS в прошивку не зашиты: берутся из профиля AWG.
-- DoH, DoT и DNSCrypt включайте по одному: dnsmasq работает в режиме `no-resolv` и при упавшем демоне остаётся без DNS.
+OpenSSL consumers in the RM2100 profile: libcurl 8.15 (curl, https_dns_proxy), OpenVPN 2.5.10, inadyn 2.12,
+getdns/stubby 1.7.3, wpa_supplicant 2.7 (EAP-PEAP).
+
+Behaviour changes:
+- `openssl.cnf`: `MinProtocol=TLSv1.2`, `CipherString=DEFAULT:@SECLEVEL=1` (as in ng). Servers that only speak TLS 1.0/1.1
+  (old RADIUS servers for EAP, old HTTPS sites) stop working.
+- OpenSSL 3 has no MD4, RC2 or Blowfish in the default provider (there is no legacy provider in this build).
+  wpa_supplicant uses its own MD4 (patch in `port-openssl.py`); OpenVPN profiles with `cipher BF-CBC` stop working, use AES.
+- The image grows (libcrypto 3.x is larger than 1.1.1).
+- The `openssl` executable stays in the RM2100 image (rule 33): `openvpn-cert.sh`, `https-cert.sh` and `aliddns.sh` need it.
+
+## Flashing
+Through the web interface ("Administration" → "Firmware update"); the router reboots itself after writing (rule 30).
+After flashing, on the PC: `ssh-keygen -R 192.168.1.1`.
+
+## Key rules (short)
+- 15: nvram buffer 1024 → `NVRAM_MAX_VALUE_LEN` (full AWG `I1` parameter).
+- 16, 20: `update_resolvconf` and routes to public DNS through the AWG tunnel.
+- 17: httpd serves `**.json` (web import of AWG parameters).
+- 26: quiet HNAT log (`mtk_pong_hqos_handler`).
+- 29: `export STAGEDIR` for CMake. 30: reboot after flashing via `reboot(2)`.
+- 31, 32: firmware version and image name with the git hash. 33: `openssl` executable included in the RM2100 image.
+
+## IPSet service
+- Enable with `ipset_enable` on the "IPSet" tab (off by default). Lists from `ipset.json` and `ipset_post_script.sh` are
+  downloaded with **curl** (the busybox 1.24 `wget` cannot do HTTPS and returns 0 without writing a file).
+- Regex entries in `dnsmasq.ipset` work when `CONFIG_FIRMWARE_ENABLE_DNSMASQ_REGEX=y` (RM2100); without it the image uses
+  `ipset/dnsmasq.ipset.noregex`. For regex-matched domains dnsmasq adds addresses only from upstream answers, not from cache.
+- Defaults under `/etc/storage/ipset/` are created only if missing: after an update delete a stale
+  `ipset_post_script.sh` on the router and reboot.
+- `Service8` tab is empty, as in ng.
+
+## Known limitations
+- Rule 25 (tunnel DNS) is off by default (`NG_TUNNEL_DNS=1` enables it). DNS addresses are not hard-coded: they come from the AWG profile.
+- Enable DoH, DoT and DNSCrypt one at a time: dnsmasq runs with `no-resolv`, so a crashed daemon leaves it without DNS.
+- Tor is not ported. `vpnc_ipset_allowed/exclude` have no defaults.
+- Not verified on the router with OpenSSL 3.5: OpenVPN and certificate generation, DoT (stubby), DNSCrypt, wpa_supplicant (EAP-PEAP).
+
+## Verified on RM2100
+Redmi AC2100, image `4.4.198.9-100`: AmneziaWG (list mode), Zapret2, DoH and DoT, DNSCrypt, dnsmasq 2.93 with regex and
+ipset, IPSet service (20 lists from `ipset.json` and 31 CDN lists from `ipset_post_script.sh` load at boot),
+OpenSSL 3.5.9 in `https_dns_proxy` / libcurl, reboot after flashing.

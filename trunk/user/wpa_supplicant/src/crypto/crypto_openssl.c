@@ -185,10 +185,12 @@ static int openssl_digest_vector(const EVP_MD *type, size_t num_elem,
 
 
 #ifndef CONFIG_FIPS
+#if 0 /* ng-port: OpenSSL 3.x default provider has no MD4; md4-internal.c is used (CONFIG_INTERNAL_MD4) */
 int md4_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 {
 	return openssl_digest_vector(EVP_md4(), num_elem, addr, len, mac);
 }
+#endif /* ng-port */
 #endif /* CONFIG_FIPS */
 
 

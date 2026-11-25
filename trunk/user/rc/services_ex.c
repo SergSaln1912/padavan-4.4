@@ -640,6 +640,21 @@ start_dns_dhcpd(int is_ap_mode)
 #endif
 
 	fprintf(fp, "conf-file=%s/dnsmasq.conf\n", storage_dir);
+#if defined (SUPPORT_IPSET)
+	{
+		char ipset_conf[64];
+		snprintf(ipset_conf, sizeof(ipset_conf), "%s/dnsmasq.ipset", storage_dir);
+		if (access(ipset_conf, F_OK) == 0) {
+			fprintf(fp, "conf-file=%s\n", ipset_conf);
+
+			// create dnsmasq ipsets, timeout 6h
+			doSystem("sed -n 's#^[[:space:]]*ipset=/.*/##p' %s/dnsmasq.ipset"
+				 "| tr ',' '\\n' | sort -u"
+				 "| xargs -r -I '{}' ipset -q create '{}' nethash timeout 21600",
+				 storage_dir);
+		}
+	}
+#endif
 	fclose(fp);
 	if (is_dns_used)
 		fill_dnsmasq_servers();

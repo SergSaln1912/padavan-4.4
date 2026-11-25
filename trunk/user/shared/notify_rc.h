@@ -20,6 +20,8 @@
 
 #define RCN_RESTART_FIREWALL		"restart_firewall"
 #define RCN_RESTART_DHCPD		"restart_dhcpd"
+#define RCN_FLUSH_IPSET_DHCPD		"flush_ipset_dhcpd"
+#define RCN_RESTART_IPSET		"restart_ipset"
 #define RCN_RESTART_RADV		"restart_radv"
 #define RCN_RESTART_DDNS		"restart_ddns"
 #define RCN_RESTART_UPNP		"restart_upnp"

@@ -784,6 +784,18 @@ EOF_AWG
 			chmod 644 "$dir_storage/vpnc_exclude_network.list"
 		fi
 	fi
+	# create ipset files (ng-port: ipset)
+	if [ -d "/usr/share/ipset" ]; then
+		[ -d "$dir_storage/ipset" ] || mkdir -p -m 755 "$dir_storage/ipset"
+		[ -d "$dir_dnsmasq" ] || mkdir -p -m 755 "$dir_dnsmasq"
+		for i in ipset.json ipset_post_script.sh ; do
+			[ -f "$dir_storage/ipset/$i" ] || cp -f "/usr/share/ipset/$i" "$dir_storage/ipset/$i"
+		done
+		chmod 644 "$dir_storage/ipset/ipset.json" 2>/dev/null
+		chmod 755 "$dir_storage/ipset/ipset_post_script.sh" 2>/dev/null
+		[ -f "$dir_dnsmasq/dnsmasq.ipset" ] || cp -f "/usr/share/ipset/dnsmasq.ipset" "$dir_dnsmasq/dnsmasq.ipset"
+		chmod 644 "$dir_dnsmasq/dnsmasq.ipset" 2>/dev/null
+	fi
 	# create zapret files
 	if [ -x "/usr/bin/zapret.sh" ]; then
 		/usr/bin/zapret.sh >/dev/null

@@ -619,6 +619,9 @@
 			{"dnsmasq.hosts", "File", NULL, EVM_RESTART_DHCPD},
 			{"dnsmasq.dnsmasq.conf", "File", NULL, EVM_RESTART_DHCPD},
 			{"dnsmasq.dnsmasq.servers", "File", NULL, EVM_RESTART_DHCPD},
+#if defined(SUPPORT_IPSET)
+			{"dnsmasq.dnsmasq.ipset", "File", NULL, EVM_RESTART_DHCPD},
+#endif
 			{"dnsmasq.dhcp.conf", "File", NULL, EVM_RESTART_DHCPD},
 			{"http_access", "", NULL, EVM_RESTART_HTTPD},
 			{"http_proto", "", NULL, EVM_RESTART_HTTPD},
@@ -633,6 +636,12 @@
 #endif
 			{"telnetd", "", NULL, EVM_RESTART_TELNETD},
 			{"sshd_enable", "", NULL, EVM_RESTART_SSHD},
+#if defined(SUPPORT_IPSET)
+			{"ipset_enable", "", NULL, FALSE},
+			{"ipset_period", "", NULL, FALSE},
+			{"ipsetes.ipset.json", "File", NULL, FALSE},
+			{"ipsetes.ipset_post_script.sh", "File", NULL, FALSE},
+#endif
 #if defined(APP_DOH)
 			{"doh_enable", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},
 			{"doh_server0", "", NULL, EVM_RESTART_DOH|EVM_RESTART_DHCPD},

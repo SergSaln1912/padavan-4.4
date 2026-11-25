@@ -699,3 +699,8 @@ openvpn_pages()
 set_cfg("FIRMWARE_INCLUDE_DNSCRYPT", "y", "DNSCrypt proxy ~0.5MB")
 set_cfg("FIRMWARE_INCLUDE_STUBBY", "y", "Stubby DNS-over-TLS (DoT) ~0.4MB")
 set_cfg("FIRMWARE_INCLUDE_DOH", "y", "doh_proxy DNS-over-HTTPS (DoH) ~0.5MB")
+
+# ---------------------------------------------------------------- 33. Программа openssl в образе (RM2100)
+# wget из busybox 1.24 для https запускает `openssl s_client`; без /usr/bin/openssl скачивание по https (в том числе списки IPSet)
+# не работает. Размер образа +~0.4MB. Другие платы не затрагиваются.
+set_cfg("FIRMWARE_INCLUDE_OPENSSL_EXE", "y")

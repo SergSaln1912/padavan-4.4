@@ -47,7 +47,7 @@ let fw_enable_x = '<% nvram_get_x("", "fw_enable_x"); %>';
 let vpnc_state_last = '<% nvram_get_x("", "vpnc_state_t"); %>';
 let ip6_service = '<% nvram_get_x("", "ip6_service"); %>';
 let vpnc_type = '<% nvram_get_x("", "vpnc_type"); %>';
-let IPSetList = [];
+let IPSetList = [<% get_ipset_list_hook(); %>];
 
 function initial(){
 	show_banner(0);

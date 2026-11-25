@@ -1,0 +1,10 @@
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/getdns_objects.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/getdns.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/ev_objects.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/getdns_ext_ev.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/edit_cache.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/rebuild_cache.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/list_install_components.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/install.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/install/local.dir
+/home/serg/prometeus/update/padavan-4.4/trunk/libs/libgetdns/getdns-1.7.3/build/CMakeFiles/install/strip.dir

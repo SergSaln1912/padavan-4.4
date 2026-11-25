@@ -72,6 +72,10 @@ static int wl_modified = 0;
 #endif
 static int rt_modified = 0;
 static u64 restart_needed_bits = 0;
+/* ng-port: перезапуск/сброс IPSet без новых битов EVM_* (все 64 заняты) */
+#define IPSET_NOTIFY_RESTART	1
+#define IPSET_NOTIFY_FLUSH	2
+static int ipset_notify = 0;
 
 static char post_buf[65535] = {0};
 static char post_buf_backup[65535] = {0};
@@ -723,6 +727,8 @@ ej_dump(int eid, webs_t wp, int argc, char **argv)
 		snprintf(filename, sizeof(filename), "%s/%s", STORAGE_CRONTAB_DIR, nvram_safe_get("http_username"));
 	else if (strncmp(file, "zapretc.", 8)==0)
 		snprintf(filename, sizeof(filename), "%s/%s", STORAGE_ZAPRET_DIR, file+8);
+	else if (strncmp(file, "ipsetes.", 8)==0)
+		snprintf(filename, sizeof(filename), "%s/%s", STORAGE_IPSET_DIR, file+8);
 	else
 		snprintf(filename, sizeof(filename), "%s/%s", "/tmp", file);
 
@@ -898,8 +904,13 @@ validate_asp_apply(webs_t wp, int sid)
 			const char *file_name = v->name+8;
 			
 			if (!strncmp(v->name, "dnsmasq.", 8)) {
-				if (write_textarea_to_file(value, STORAGE_DNSMASQ_DIR, file_name))
+				if (write_textarea_to_file(value, STORAGE_DNSMASQ_DIR, file_name)) {
 					restart_needed_bits |= event_mask;
+#if defined(SUPPORT_IPSET)
+					if (!strcmp(file_name, "dnsmasq.ipset"))
+						ipset_notify |= IPSET_NOTIFY_FLUSH;
+#endif
+				}
 			} else if (!strncmp(v->name, "scripts.", 8)) {
 				if (write_textarea_to_file(value, STORAGE_SCRIPTS_DIR, file_name))
 					restart_needed_bits |= event_mask;
@@ -922,6 +933,14 @@ validate_asp_apply(webs_t wp, int sid)
 				if (write_textarea_to_file(value, STORAGE_ZAPRET_DIR, file_name)) {
 					restart_needed_bits |= event_mask;
 					doSystem("/sbin/mtd_storage.sh save");	/* ng-port: сохранить файлы zapret во флеш */
+				}
+			}
+#endif
+#if defined(SUPPORT_IPSET)
+			else if (!strncmp(v->name, "ipsetes.", 8)) {
+				if (write_textarea_to_file(value, STORAGE_IPSET_DIR, file_name)) {
+					ipset_notify |= IPSET_NOTIFY_RESTART;
+					doSystem("/sbin/mtd_storage.sh save");
 				}
 			}
 #endif
@@ -955,6 +974,10 @@ validate_asp_apply(webs_t wp, int sid)
 		
 		nvram_set(v->name, value);
 		nvram_modified = 1;
+#if defined(SUPPORT_IPSET)
+		if (!strcmp(v->name, "ipset_enable"))
+			ipset_notify |= IPSET_NOTIFY_RESTART;
+#endif
 		
 		if (!strcmp(v->name, "http_username"))
 			user_changed = 1;
@@ -1142,7 +1165,7 @@ validate_asp_apply(webs_t wp, int sid)
 	if (lanip_changed)
 		validate_nvram_lan_subnet();
 
-	return (nvram_modified || restart_needed_bits) ? 1 : 0;
+	return (nvram_modified || restart_needed_bits || ipset_notify) ? 1 : 0;
 }
 
 #if 0
@@ -1187,6 +1210,7 @@ update_variables_ex(int eid, webs_t wp, int argc, char **argv)
 	int result;
 
 	restart_needed_bits = 0;
+	ipset_notify = 0;
 
 	// assign control variables
 	action_mode = websGetVar(wp, "action_mode", "");
@@ -1331,6 +1355,9 @@ update_variables_ex(int eid, webs_t wp, int argc, char **argv)
 		
 		websWrite(wp, "<script>restart_needed_time(%u);</script>\n", restart_total_time);
 	}
+	else if (ipset_notify != 0 && (!strcmp(action_mode, " Apply ") || !strcmp(action_mode, " Restart "))) {
+		websWrite(wp, "<script>restart_needed_time(%d);</script>\n", 1);
+	}
 
 	return 0;
 }
@@ -1351,7 +1378,7 @@ ej_notify_services(int eid, webs_t wp, int argc, char **argv)
 {
 	int i;
 
-	if (!restart_needed_bits)
+	if (!restart_needed_bits && !ipset_notify)
 		return 0;
 
 	if ((restart_needed_bits & EVM_RESTART_REBOOT) != 0) {
@@ -1363,6 +1390,11 @@ ej_notify_services(int eid, webs_t wp, int argc, char **argv)
 	}
 
 	dbG("debug restart_needed_bits before: 0x%llx\n", restart_needed_bits);
+
+#if defined(SUPPORT_IPSET)
+	if (ipset_notify & IPSET_NOTIFY_FLUSH)
+		notify_rc(RCN_FLUSH_IPSET_DHCPD);
+#endif
 
 	i = 0;
 	while (events_desc[i].notify_cmd) {
@@ -1422,6 +1454,11 @@ ej_notify_services(int eid, webs_t wp, int argc, char **argv)
 
 	dbG("debug restart_needed_bits after: 0x%llx\n", restart_needed_bits);
 
+#if defined(SUPPORT_IPSET)
+	if (ipset_notify & IPSET_NOTIFY_RESTART)
+		notify_rc(RCN_RESTART_IPSET);
+#endif
+	ipset_notify = 0;
 	restart_needed_bits = 0;
 
 	return 0;
@@ -2445,6 +2482,46 @@ nf_values_hook(int eid, webs_t wp, int argc, char **argv)
 	
 	websWrite(wp, "function nf_conntrack_count() { return '%s';}\n", nf_count);
 	
+	return 0;
+}
+
+static int
+get_ipset_list_hook(int eid, webs_t wp, int argc, char **argv)
+{
+#if defined(SUPPORT_IPSET)
+	FILE *fp;
+	const char *cmd = "ipset -q -t list | grep -E '^(Name|Number of entries):'";
+	char line[256] = {0};
+	char name[128] = {0};
+	char entries[32] = {0};
+	int first = 1;
+	int waiting_for_entries = 0;
+
+	fp = popen(cmd, "r");
+	if (fp == NULL) {
+		return 1;
+	}
+
+	while (fgets(line, sizeof(line), fp)) {
+		line[strcspn(line, "\r\n")] = 0;
+
+		if (strncmp(line, "Name: ", 6) == 0) {
+			sscanf(line + 6, " %127s", name);
+			waiting_for_entries = 1;
+		}
+		else if (strncmp(line, "Number of entries: ", 19) == 0 && waiting_for_entries) {
+			sscanf(line + 19, " %31s", entries);
+			if (!first) {
+				websWrite(wp, ",");
+			}
+			websWrite(wp, "{\"name\": \"%s\", \"entries\": \"%s\"}", name, entries);
+			first = 0;
+			waiting_for_entries = 0;
+		}
+	}
+
+	pclose(fp);
+#endif
 	return 0;
 }
 
@@ -4676,6 +4753,7 @@ struct ej_handler ej_handlers[] =
 	{ "uptime", ej_uptime},
 	{ "nvram_dump", ej_dump},
 	{ "firmware_caps_hook", ej_firmware_caps_hook},
+	{ "get_ipset_list_hook", get_ipset_list_hook},
 	{ "json_system_status", ej_system_status_hook},
 
 	{ "netdev", ej_netdev},

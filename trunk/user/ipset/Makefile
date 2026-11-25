@@ -50,4 +50,9 @@ clean:
 
 romfs:
 	$(ROMFSINST) $(THISDIR)/$(SRC_NAME)/src/ipset /sbin/ipset
+	$(ROMFSINST) -p +x /usr/bin/ipset.sh
+	$(ROMFSINST) -d config /usr/share/ipset
+ifneq ($(CONFIG_FIRMWARE_ENABLE_DNSMASQ_REGEX),y)
+	$(ROMFSINST) dnsmasq.ipset.noregex /usr/share/ipset/dnsmasq.ipset
+endif
 

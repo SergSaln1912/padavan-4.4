@@ -638,6 +638,12 @@ void start_zapret(void);
 void restart_zapret(void);
 void reload_zapret(void);
 #endif
+#if defined (SUPPORT_IPSET)
+int is_ipset_run(void);
+void stop_ipset(void);
+void start_ipset(void);
+void restart_ipset(void);
+#endif
 #if defined(APP_SMARTDNS)
 void stop_smartdns(void);
 void start_smartdns(void);

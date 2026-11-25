@@ -7,6 +7,8 @@ DoH / DoT (stubby) / DNSCrypt, OpenVPN, русский язык, меню «Се
 ## Что внутри
 - `tools/ng-port/port-build-fixes.py` — идемпотентные правила 1–32, применяются к дереву; повторный запуск ничего не меняет.
 - `tools/ng-port/port-dns-services.py` — перенос DoH, DoT, DNSCrypt, libgetdns, libyaml из padavan-ng.
+- `tools/ng-port/port-dnsmasq.py` (+ `210-max-procs-4.patch` рядом) — обновление dnsmasq 2.90 → 2.93 с regex-патчами из padavan-ng (нужен libpcre).
+- `tools/ng-port/port-ipset.py` — перенос сервиса IPSet (ipset.sh, вкладка «IPSet», dnsmasq.ipset, обновление по таймеру).
 - `tools/ng-port/awg-conf-import.sh` — (на роутере) переносит параметры AWG из `.conf` в nvram.
 - `tools/ng-port/awg-debug.py`, `awg-sniff*`, `port-survey-*.sh` — отладка и обзор дерева.
 
@@ -19,6 +21,8 @@ unset STAGEDIR
 cd ~/prometeus/update                                    # рядом лежат padavan-ng и padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-build-fixes.py padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-dns-services.py padavan-ng padavan-4.4
+python3 padavan-4.4/tools/ng-port/port-dnsmasq.py padavan-ng padavan-4.4
+python3 padavan-4.4/tools/ng-port/port-ipset.py padavan-ng padavan-4.4
 cd padavan-4.4 && make RM2100 2>&1 | tee build.log
 ```
 
@@ -40,6 +44,6 @@ cd padavan-4.4 && make RM2100 2>&1 | tee build.log
 - 31, 32: версия и имя образа с хешем git.
 
 ## Известные ограничения
-- Сервис IPSet не перенесён (страница есть, backend нет); вкладка Service8 пустая, как в ng.
+- IPSet: regex-записи в `dnsmasq.ipset` работают при `CONFIG_FIRMWARE_ENABLE_DNSMASQ_REGEX=y` (RM2100); без него в образ ставится вариант `ipset/dnsmasq.ipset.noregex`. Включение сервиса — `ipset_enable` на вкладке «IPSet» (по умолчанию выключено). Вкладка Service8 пустая, как в ng.
 - Правило 25 (DNS туннеля) выключено по умолчанию (`NG_TUNNEL_DNS=1` включает). Адреса DNS в прошивку не зашиты: берутся из профиля AWG.
 - DoH, DoT и DNSCrypt включайте по одному: dnsmasq работает в режиме `no-resolv` и при упавшем демоне остаётся без DNS.

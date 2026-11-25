@@ -246,6 +246,9 @@ endif
 ifneq ($(CONFIG_FIRMWARE_INCLUDE_STUBBY),y)
 	rm -f $(INSTALLDIR)/www/Advanced_Services_DoT.asp
 endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_IPSET),y)
+	rm -f $(INSTALLDIR)/www/Advanced_Services_IPSet.asp
+endif
 # ng-port: openvpn pages
 ifeq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_SERVER) $(CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG) $(CONFIG_FIRMWARE_INCLUDE_OPENVPN)))
 	rm -f $(INSTALLDIR)/www/vpnsrv.asp

@@ -1145,6 +1145,10 @@ struct nvram_pair router_defaults[] = {
 	{ "vpnc_pdns", "0" },
 	{ "vpnc_mtu", "1450" },
 	{ "vpnc_mru", "1450" },
+#if defined(SUPPORT_IPSET)
+	{ "ipset_enable", "0" },
+	{ "ipset_period", "24" },
+#endif
 	{ "vpnc_sfw", "0" },
 	{ "vpnc_dgw", "0" },
 

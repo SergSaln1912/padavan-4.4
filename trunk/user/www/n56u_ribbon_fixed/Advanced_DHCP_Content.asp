@@ -65,6 +65,8 @@
             show_footer();
             showtext($("LANIP"), '<% nvram_get_x("", "lan_ipaddr"); %>');
 
+            showhide_div('row_dipset', found_support_ipset());
+
             if (get_ap_mode()) {
                 showhide_div('row_dhcpd_rt', 0);
                 showhide_div('row_dhcpd_ap', 1);
@@ -76,6 +78,7 @@
                 showhide_div('row_dhcp_stop_dns_rebind', 0);
                 showhide_div('row_dhcp_proxy_dnssec', 0);
                 showhide_div('row_dservers', 0);
+                showhide_div('row_dipset', 0);
                 showhide_div('row_dhcpconf', 0);
                 showhide_div('row_hosts', 0);
             }
@@ -820,6 +823,19 @@
                                                                 maxlength="16384" class="span12"
                                                                 name="dnsmasq.dnsmasq.conf"
                                                                 style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("dnsmasq.dnsmasq.conf",""); %></textarea>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr id="row_dipset">
+                                                    <td colspan="2">
+                                                        <a href="javascript:spoiler_toggle('spoiler_dipset')"><span>
+                                                                <#CustomConf#> "dnsmasq.ipset"
+                                                            </span></a>
+                                                        <div id="spoiler_dipset" style="display:none;">
+                                                            <textarea rows="16" wrap="off" spellcheck="false"
+                                                                maxlength="32768" class="span12"
+                                                                name="dnsmasq.dnsmasq.ipset"
+                                                                style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("dnsmasq.dnsmasq.ipset",""); %></textarea>
                                                         </div>
                                                     </td>
                                                 </tr>

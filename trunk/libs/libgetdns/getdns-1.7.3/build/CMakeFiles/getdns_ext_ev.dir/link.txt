@@ -1,0 +1,2 @@
+mipsel-linux-uclibc-ar qc libgetdns_ext_ev.a CMakeFiles/ev_objects.dir/src/extension/libev.c.o
+mipsel-linux-uclibc-ranlib libgetdns_ext_ev.a

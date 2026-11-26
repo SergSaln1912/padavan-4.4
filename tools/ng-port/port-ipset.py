@@ -209,6 +209,12 @@ ins(RC, "rc.c: команда restart_ipset (кнопка на странице)
     '#if defined(SUPPORT_IPSET)\n\telse if (!strcmp(base, RCN_RESTART_IPSET)) {\n\t\tnotify_rc(RCN_RESTART_IPSET);\n\t}\n#endif\n',
     "!strcmp(base, RCN_RESTART_IPSET)")
 
+# Кнопка «Обновить» на вкладке IPSet выполняет команду restart_ipset через SystemCmd, поэтому нужна ссылка /sbin/restart_ipset -> rc
+# (как restart_zapret). Без неё в консоли «restart_ipset: not found» и ничего не происходит.
+ins(U + "/rc/Makefile", "rc/Makefile: ссылка /sbin/restart_ipset",
+    r"^\tcd \$\(INSTALLDIR\)/sbin && ln -sf rc restart_zapret\n",
+    "\tcd $(INSTALLDIR)/sbin && ln -sf rc restart_ipset\n", "ln -sf rc restart_ipset")
+
 SV = U + "/rc/services.c"
 ins(SV, "services.c: start/stop/restart_ipset", r"^void reload_zapret\(void\)\{\n[^\n]*\n[^\n]*\n\}\n#endif\n",
     '''
@@ -437,6 +443,27 @@ ins(U + "/shared/defaults.c", "defaults.c: ipset_enable / ipset_period", r'^\t\{
     '#if defined(SUPPORT_IPSET)\n\t{ "ipset_enable", "0" },\n\t{ "ipset_period", "24" },\n#endif\n', '{ "ipset_enable"', where="before")
 
 # ================================================================ 7. www
+# JS-функции из ng, без которых страницы с выбором наборов (VPN-клиент, Zapret, Proxy) и кнопка «Обновить» IPSet падают:
+# declOfNum (склонение «запись/записи/записей», общий скрипт general.js) и sendSystemCmd (state.js, команда через /apply.cgi).
+def port_js_func(rel_js, fname, where):
+    ngp = os.path.join(NG, rel_js)
+    s_ng = rd(ngp).replace("\r\n", "\n") if os.path.exists(ngp) else None
+    m = re.search(r"^function %s\(.*?^\}\n" % fname, s_ng or "", re.M | re.S)
+    if not m: step("НЕТ В NG", "%s: function %s" % (rel_js, fname)); return
+    fn = m.group(0)
+    s44, crlf = load(N44, rel_js)
+    if s44 is None: step("НЕТ ФАЙЛА", rel_js); return
+    if "function %s(" % fname in s44: step("уже есть", "%s: %s()" % (rel_js, fname)); return
+    if where == "end":
+        new = s44.rstrip("\n") + "\n\n" + fn
+    else:
+        i = s44.find(where)
+        if i < 0: step("НЕ НАЙДЕНО", "%s: якорь для %s" % (rel_js, fname)); return
+        new = s44[:i] + fn + "\n" + s44[i:]
+    save(N44, rel_js, new, crlf); step("сделано", "%s: %s()" % (rel_js, fname))
+port_js_func(W + "/general.js", "declOfNum", "end")
+port_js_func(W + "/state.js", "sendSystemCmd", "function get_ap_mode(){")
+
 # (якорь выбираем по последнему из блоков rm -f страниц «Сервисы»)
 s, crlf = load(N44, U + "/www/Makefile")
 if s is None: step("НЕТ ФАЙЛА", "www/Makefile")

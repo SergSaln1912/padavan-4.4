@@ -700,7 +700,27 @@ set_cfg("FIRMWARE_INCLUDE_DNSCRYPT", "y", "DNSCrypt proxy ~0.5MB")
 set_cfg("FIRMWARE_INCLUDE_STUBBY", "y", "Stubby DNS-over-TLS (DoT) ~0.4MB")
 set_cfg("FIRMWARE_INCLUDE_DOH", "y", "doh_proxy DNS-over-HTTPS (DoH) ~0.5MB")
 
-# ---------------------------------------------------------------- 33. Программа openssl в образе (RM2100)
-# wget из busybox 1.24 для https запускает `openssl s_client`; без /usr/bin/openssl скачивание по https (в том числе списки IPSet)
-# не работает. Размер образа +~0.4MB. Другие платы не затрагиваются.
-set_cfg("FIRMWARE_INCLUDE_OPENSSL_EXE", "y")
+# ---------------------------------------------------------------- 33. Программа openssl в образе RM2100 включена (~0.4MB)
+# Нужна другим модулям: openvpn-cert.sh (ключи и сертификаты OpenVPN на веб-странице), https-cert.sh (сертификат веб-интерфейса),
+# aliddns.sh. Без неё генерация сертификатов не работает. IPSet качает списки через curl, openssl ему не нужен
+# (busybox 1.24 wget по https через openssl s_client не работает). Если ранее было n, возвращаем y.
+set_cfg("FIRMWARE_INCLUDE_OPENSSL_EXE", "y", "Include \"openssl\" executable for generate certificates. ~0.4MB")
+
+# ---------------------------------------------------------------- 34. Подвал веб-интерфейса: год 2011-2026 и ник на GitHub
+# Текст подвала задаётся в trunk/user/www/Makefile (LABEL_COPYRIGHT_TEXT) и подставляется в словари вместо ZVCOPYRVZ.
+# В значении для sed слэши экранированы (\/), амперсанд тоже (\&).
+GH_NICK = "SergSaln1912"; COPY_YEAR = "2026"
+def footer_text():
+    rel = "trunk/user/www/Makefile"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    m = re.search(r"^LABEL_COPYRIGHT_TEXT='.*'$", s, re.M)
+    if not m: print("НЕ НАЙДЕНО   www/Makefile: LABEL_COPYRIGHT_TEXT"); return
+    t = m.group(0); orig = t
+    t = re.sub(r"© 2011-\d{4}", "© 2011-" + COPY_YEAR, t, count=1)
+    if "github.com\\/%s\"" % GH_NICK not in t:
+        t = t[:-1] + ' \\& <a href="https:\\/\\/github.com\\/%s" target="blank">%s<\\/a>\'' % (GH_NICK, GH_NICK)
+    if t == orig: print("уже есть     www/Makefile: подвал (%s, 2011-%s)" % (GH_NICK, COPY_YEAR)); return
+    s = s[:m.start()] + t + s[m.end():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      www/Makefile: подвал (%s, 2011-%s)" % (GH_NICK, COPY_YEAR))
+footer_text()

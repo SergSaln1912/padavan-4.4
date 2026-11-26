@@ -22,6 +22,7 @@ All scripts are idempotent: a second run changes nothing. They take the two tree
 | `port-dnsmasq.py` + `210-max-procs-4.patch` | dnsmasq 2.90 → 2.93 with the ng regex patches (needs libpcre). |
 | `port-ipset.py` | IPSet service: `ipset.sh`, "IPSet" tab, `dnsmasq.ipset` editor, update timer. |
 | `port-openssl.py` | OpenSSL 1.1.1w → 3.5.9 LTS (`libs/libssl/{1.1,3.5}`), internal MD4 for wpa_supplicant. |
+| `port-busybox.py` | BusyBox 1.24.x → 1.38.0 (flag `CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138`, ng patches and config); all boards. |
 | `awg-conf-import.sh` | (on the router) imports AWG parameters from a `.conf` into nvram. |
 | `awg-debug.py`, `awg-sniff*`, `port-survey-*.sh` | Debugging and tree survey helpers. |
 
@@ -37,6 +38,7 @@ python3 padavan-4.4/tools/ng-port/port-dns-services.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-dnsmasq.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-ipset.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-openssl.py padavan-ng padavan-4.4
+python3 padavan-4.4/tools/ng-port/port-busybox.py padavan-ng padavan-4.4
 cd padavan-4.4 && make RM2100 2>&1 | tee build.log
 ```
 
@@ -76,6 +78,20 @@ Behaviour changes:
 - The image grows (libcrypto 3.x is larger than 1.1.1).
 - The `openssl` executable stays in the RM2100 image (rule 33): `openvpn-cert.sh`, `https-cert.sh` and `aliddns.sh` need it.
 
+## BusyBox 1.38
+`port-busybox.py` adds BusyBox 1.38.0 next to the old 1.24.x: `trunk/user/busybox/Makefile` picks the version by the profile flag
+`CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138=y` (set for all boards; without the flag or with `n` 1.24.x is built; only RM2100 was built and tested).
+The tarball (2.7 MB) is downloaded from busybox.net at build time and checked against SHA-256 (the sum comes from the tarball in
+padavan-ng); the patches (`dhcp6c`, `udhcpc`, `ntpd`, `syslogd`, `init`, ...) and the config (`configs/boards/busybox-1.38.config`)
+come from ng. `wget` does https with BusyBox's built-in TLS, the `openssl` program is not needed for that.
+
+Missing from the ng config compared with 1.24.x: ash `getopts`, `base64`, `getopt`, `groups`, `hexdump`, `id`, `modinfo`, `nohup`,
+`sha256sum`, `telnet`, `unzip` (firmware scripts do not call them; enable in `busybox-1.38.config` if needed).
+Verified on the host: patches apply, the config resolves without questions, BusyBox builds, 227 firmware scripts pass `sh -n` with the
+new ash. Verified on the router (RM2100, `bb-check.sh`): boot, WAN DHCP (`udhcpc`), `dhcp6c`, NTP, `wget` over https with the built-in TLS, `nc -u`,
+`sysctl vm.drop_caches`, `syslogd`, 41 scripts pass `sh -n`. Other boards were not built. If the router does not boot, set `n` in the
+profile and rebuild (or flash the previous image). `bb-check.sh` is the post-flash check script.
+
 ## Flashing
 Through the web interface ("Administration" → "Firmware update"); the router reboots itself after writing (rule 30).
 After flashing, on the PC: `ssh-keygen -R 192.168.1.1`.
@@ -107,4 +123,5 @@ After flashing, on the PC: `ssh-keygen -R 192.168.1.1`.
 ## Verified on RM2100
 Redmi AC2100, image `4.4.198.9-100`: AmneziaWG (list mode), Zapret2, DoH, DoT (stubby answers on 127.0.0.1:5453) and DNSCrypt (answers on 127.0.0.1:65053), dnsmasq 2.93 with regex and
 ipset, IPSet service (update button and set pickers on the VPN client, Zapret and Proxy pages; 20 lists from `ipset.json` and 31 CDN lists from `ipset_post_script.sh` load at boot),
-OpenSSL 3.5.9 in `https_dns_proxy` / libcurl, reboot after flashing.
+OpenSSL 3.5.9 in `https_dns_proxy` / libcurl, reboot after flashing, BusyBox 1.38.0.
+

@@ -1,0 +1,35 @@
+# BusyBox 1.38 (https://busybox.net). Перенос из padavan-ng: те же патчи, конфиг приходит от trunk/configure
+# (user/busybox/busybox.config), тарболл скачивается при сборке и проверяется по SHA-256.
+SRC_NAME = busybox-1.38.0
+SRC_URL = https://busybox.net/downloads/$(SRC_NAME).tar.bz2
+SRC_SHA256 = 34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2
+
+CFLAGS += -ffunction-sections -fdata-sections -fvisibility=hidden
+LDFLAGS += -Wl,--gc-sections
+
+all: download_test extract_test
+	cp -fL busybox.config $(SRC_NAME)/.config
+	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
+
+download_test:
+	( if [ ! -f $(SRC_NAME).tar.bz2 ]; then \
+		wget -t5 -T40 -O $(SRC_NAME).tar.bz2 $(SRC_URL) \
+			|| rm -f $(SRC_NAME).tar.bz2; \
+	fi; \
+	if [ -f $(SRC_NAME).tar.bz2 ] && [ "`sha256sum $(SRC_NAME).tar.bz2 | cut -d' ' -f1`" != "$(SRC_SHA256)" ]; then \
+		echo "$(SRC_NAME).tar.bz2: wrong SHA-256, removed"; \
+		rm -f $(SRC_NAME).tar.bz2; \
+	fi; \
+	[ -f $(SRC_NAME).tar.bz2 ] )
+
+extract_test:
+	( if [ ! -d $(SRC_NAME) ]; then \
+		tar xjf $(SRC_NAME).tar.bz2 && \
+		cat patches/*.patch | patch -d $(SRC_NAME) -r - -N -p1; \
+	fi )
+
+clean:
+	( if [ -d $(SRC_NAME) ]; then $(MAKE) -C $(SRC_NAME) distclean; fi )
+
+romfs:
+	$(MAKE) -C $(SRC_NAME) CONFIG_PREFIX=$(ROMFSDIR) install

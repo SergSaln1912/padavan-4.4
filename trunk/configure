@@ -52,6 +52,12 @@ func_disable_busybox_param()
 # load project root config
 . $ROOTDIR/.config
 
+# ng-port: BusyBox 1.38 (CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138=y); по умолчанию 1.24.x
+if [ "$CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138" = "y" ] ; then
+	busybox_cf="$ROOTDIR/configs/boards/busybox-1.38.config"
+	busybox_tf="$ROOTDIR/user/busybox/busybox.config"
+fi
+
 if [ ! -f "$ROOTDIR/vendors/Ralink/config.arch" ] ; then
 	echo "Project product dir not found! Terminate."
 	exit 1
@@ -107,6 +113,11 @@ mkdir -p $ROOTDIR/images
 ln -sf vendors/Ralink/config.arch config.arch
 cp -fL "$kernel_cf" "$kernel_tf"
 cp -fL "$busybox_cf" "$busybox_tf"
+# ng-port: wget HTTPS средствами самого BusyBox 1.38 (без программы openssl)
+if [ "$CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138" = "y" ] ; then
+	func_enable_busybox_param "CONFIG_FEATURE_WGET_HTTPS"
+	func_disable_busybox_param "CONFIG_FEATURE_WGET_OPENSSL"
+fi
 cp -fL "$board_mk" "$ROOTDIR/user/shared/board.mk"
 cp -fL "$board_h" "$ROOTDIR/user/shared/include/ralink_board.h"
 ############################# SMP #####################################
@@ -155,6 +166,8 @@ if [ "$CONFIG_FIRMWARE_ENABLE_USB" != "y" ] || [ -z "$CONFIG_USB_SUPPORT" ] ; th
 	func_disable_busybox_param "CONFIG_FEATURE_EJECT_SCSI"
 	func_disable_busybox_param "CONFIG_MKSWAP"
 	func_disable_busybox_param "CONFIG_SWAPONOFF"
+	func_disable_busybox_param "CONFIG_SWAPON"
+	func_disable_busybox_param "CONFIG_SWAPOFF"
 	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_FAT"
 	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_EXFAT"
 	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_NTFS"
@@ -178,6 +191,8 @@ fi
 if [ "$CONFIG_FIRMWARE_ENABLE_SWAP" != "y" ] ; then
 	func_disable_busybox_param "CONFIG_MKSWAP"
 	func_disable_busybox_param "CONFIG_SWAPONOFF"
+	func_disable_busybox_param "CONFIG_SWAPON"
+	func_disable_busybox_param "CONFIG_SWAPOFF"
 fi
 fi
 ############################# XFRM ####################################

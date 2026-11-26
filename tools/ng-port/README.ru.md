@@ -22,6 +22,7 @@
 | `port-dnsmasq.py` + `210-max-procs-4.patch` | dnsmasq 2.90 → 2.93 с regex-патчами ng (нужен libpcre). |
 | `port-ipset.py` | Сервис IPSet: `ipset.sh`, вкладка «IPSet», редактор `dnsmasq.ipset`, обновление по таймеру. |
 | `port-openssl.py` | OpenSSL 1.1.1w → 3.5.9 LTS (`libs/libssl/{1.1,3.5}`), внутренний MD4 для wpa_supplicant. |
+| `port-busybox.py` | BusyBox 1.24.x → 1.38.0 (флаг `CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138`, патчи и конфиг ng); все платы. |
 | `awg-conf-import.sh` | (на роутере) переносит параметры AWG из `.conf` в nvram. |
 | `awg-debug.py`, `awg-sniff*`, `port-survey-*.sh` | Отладка и обзор дерева. |
 
@@ -37,6 +38,7 @@ python3 padavan-4.4/tools/ng-port/port-dns-services.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-dnsmasq.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-ipset.py padavan-ng padavan-4.4
 python3 padavan-4.4/tools/ng-port/port-openssl.py padavan-ng padavan-4.4
+python3 padavan-4.4/tools/ng-port/port-busybox.py padavan-ng padavan-4.4
 cd padavan-4.4 && make RM2100 2>&1 | tee build.log
 ```
 
@@ -76,6 +78,20 @@ getdns/stubby 1.7.3, wpa_supplicant 2.7 (EAP-PEAP).
 - Образ вырастет (libcrypto 3.x больше 1.1.1).
 - Программа `openssl` остаётся в образе RM2100 (правило 33): она нужна `openvpn-cert.sh`, `https-cert.sh` и `aliddns.sh`.
 
+## BusyBox 1.38
+`port-busybox.py` добавляет BusyBox 1.38.0 рядом с прежним 1.24.x: `trunk/user/busybox/Makefile` выбирает версию по флагу
+`CONFIG_FIRMWARE_INCLUDE_BUSYBOX_138=y` в профиле (включён у всех плат; без флага или с `n` собирается 1.24.x; собирался и проверялся только RM2100).
+Тарболл (2,7 МБ) скачивается при сборке с busybox.net и проверяется по SHA-256 (сумма взята из тарболла в padavan-ng),
+патчи (`dhcp6c`, `udhcpc`, `ntpd`, `syslogd`, `init` и др.) и конфиг (`configs/boards/busybox-1.38.config`) взяты из ng.
+`wget` по https работает встроенным TLS BusyBox, программа `openssl` для этого не нужна.
+
+Чего нет в конфиге ng по сравнению с 1.24.x: `getopts` в ash, `base64`, `getopt`, `groups`, `hexdump`, `id`, `modinfo`, `nohup`,
+`sha256sum`, `telnet`, `unzip` (скрипты прошивки их не вызывают; при необходимости включаются в `busybox-1.38.config`).
+Проверено на хосте: патчи накладываются, конфиг разрешается без вопросов, BusyBox собирается, 227 скриптов прошивки проходят
+`sh -n` новым ash. На роутере (RM2100, `bb-check.sh`): загрузка, DHCP WAN (`udhcpc`), `dhcp6c`, NTP, `wget` по https встроенным TLS, `nc -u`,
+`sysctl vm.drop_caches`, `syslogd`, 41 скрипт `sh -n` — всё работает. Другие платы не собирались. Если роутер не грузится,
+верните `n` в профиле и пересоберите (или прошейте прежний образ). `bb-check.sh` — скрипт проверки после прошивки.
+
 ## Прошивка
 Через веб-интерфейс («Администрирование» → «Обновление микропрограммы»); после записи роутер перезагружается сам (правило 30).
 После перепрошивки на ПК: `ssh-keygen -R 192.168.1.1`.
@@ -108,4 +124,5 @@ getdns/stubby 1.7.3, wpa_supplicant 2.7 (EAP-PEAP).
 ## Проверено на RM2100
 Redmi AC2100, образ `4.4.198.9-100`: AmneziaWG (режим по списку), Zapret2, DoH, DoT (ответ stubby на 127.0.0.1:5453) и DNSCrypt (ответ на 127.0.0.1:65053), dnsmasq 2.93 с regex и ipset,
 сервис IPSet (кнопка «Обновить» и выбор наборов на страницах VPN-клиента, Zapret и Proxy; при загрузке подгружаются 20 списков из `ipset.json` и 31 список CDN из `ipset_post_script.sh`),
-OpenSSL 3.5.9 в `https_dns_proxy` / libcurl, перезагрузка после прошивки.
+OpenSSL 3.5.9 в `https_dns_proxy` / libcurl, перезагрузка после прошивки, BusyBox 1.38.0.
+

@@ -17,7 +17,7 @@ All scripts are idempotent: a second run changes nothing. They take the two tree
 
 | File | Purpose |
 |---|---|
-| `port-build-fixes.py` | Rules 1–33 applied to the tree (AWG, DNS, nvram buffer, HNAT log, reboot after flashing, version with git hash, board profile flags). |
+| `port-build-fixes.py` | Rules 1–34 applied to the tree (AWG, DNS, nvram buffer, HNAT log, reboot after flashing, version with git hash, board profile flags). |
 | `port-dns-services.py` | DoH (https_dns_proxy), DoT (stubby + libgetdns), DNSCrypt, libyaml: packages, rc, httpd, pages, dictionaries. |
 | `port-dnsmasq.py` + `210-max-procs-4.patch` | dnsmasq 2.90 → 2.93 with the ng regex patches (needs libpcre). |
 | `port-ipset.py` | IPSet service: `ipset.sh`, "IPSet" tab, `dnsmasq.ipset` editor, update timer. |
@@ -87,6 +87,7 @@ After flashing, on the PC: `ssh-keygen -R 192.168.1.1`.
 - 26: quiet HNAT log (`mtk_pong_hqos_handler`).
 - 29: `export STAGEDIR` for CMake. 30: reboot after flashing via `reboot(2)`.
 - 31, 32: firmware version and image name with the git hash. 33: `openssl` executable included in the RM2100 image.
+- 34: web UI footer: "2011-2026" and a GitHub link (`GH_NICK` in the rule).
 
 ## IPSet service
 - Enable with `ipset_enable` on the "IPSet" tab (off by default). Lists from `ipset.json` and `ipset_post_script.sh` are
@@ -101,9 +102,9 @@ After flashing, on the PC: `ssh-keygen -R 192.168.1.1`.
 - Rule 25 (tunnel DNS) is off by default (`NG_TUNNEL_DNS=1` enables it). DNS addresses are not hard-coded: they come from the AWG profile.
 - Enable DoH, DoT and DNSCrypt one at a time: dnsmasq runs with `no-resolv`, so a crashed daemon leaves it without DNS.
 - Tor is not ported. `vpnc_ipset_allowed/exclude` have no defaults.
-- Not verified on the router with OpenSSL 3.5: OpenVPN and certificate generation, DoT (stubby), DNSCrypt, wpa_supplicant (EAP-PEAP).
+- Not verified on the router with OpenSSL 3.5: OpenVPN and certificate generation, wpa_supplicant (EAP-PEAP).
 
 ## Verified on RM2100
-Redmi AC2100, image `4.4.198.9-100`: AmneziaWG (list mode), Zapret2, DoH and DoT, DNSCrypt, dnsmasq 2.93 with regex and
-ipset, IPSet service (20 lists from `ipset.json` and 31 CDN lists from `ipset_post_script.sh` load at boot),
+Redmi AC2100, image `4.4.198.9-100`: AmneziaWG (list mode), Zapret2, DoH, DoT (stubby answers on 127.0.0.1:5453) and DNSCrypt (answers on 127.0.0.1:65053), dnsmasq 2.93 with regex and
+ipset, IPSet service (update button and set pickers on the VPN client, Zapret and Proxy pages; 20 lists from `ipset.json` and 31 CDN lists from `ipset_post_script.sh` load at boot),
 OpenSSL 3.5.9 in `https_dns_proxy` / libcurl, reboot after flashing.

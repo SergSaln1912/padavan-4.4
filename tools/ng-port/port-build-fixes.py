@@ -216,7 +216,13 @@ ipset_list_set()
 # ---------------------------------------------------------------- 12. страницы VPN: нет ej-функции get_ipset_list_hook в 4.4
 # Без службы IPSet в httpd 4.4 нет get_ipset_list_hook(); необработанный тег <% ... %> попадает в JavaScript
 # ("Unexpected token '<'"), весь скрипт страницы не разбирается (initial/change_vpnc_enabled is not defined).
+def ipset_hook_ported():
+    # port-ipset.py добавляет в httpd ej-функцию get_ipset_list_hook; тогда страницы должны её вызывать, а не получать "[]".
+    q = os.path.join(REPO, "trunk/user/httpd/web_ex.c")
+    return os.path.exists(q) and "get_ipset_list_hook(int eid" in rd(q)
+
 def no_ipset_hook():
+    if ipset_hook_ported(): print("пропущено    vpncli/vpnsrv.asp: get_ipset_list_hook есть в httpd (IPSet перенесён), страницы не трогаем"); return
     for name in ("vpncli.asp", "vpnsrv.asp"):
         rel = "trunk/user/www/n56u_ribbon_fixed/" + name
         p = os.path.join(REPO, rel)
@@ -231,13 +237,13 @@ no_ipset_hook()
 # 13: Advanced_Services_Zapret.asp: нет хуков get_ipset_list_hook и net_iface_list
 def zapret_hooks():
     import glob
-    # 13a: get_ipset_list_hook -> [] во всех страницах исходников
+    # 13a: get_ipset_list_hook -> [] во всех страницах исходников (если IPSet не перенесён)
     pat = re.compile(r"\[\s*<%\s*get_ipset_list_hook\(\);\s*%>\s*\]")
     cnt = 0
-    for p in glob.glob(os.path.join(REPO, "trunk/user/www/*/*.asp")):
+    for p in ([] if ipset_hook_ported() else glob.glob(os.path.join(REPO, "trunk/user/www/*/*.asp"))):
         s = rd(p); new, n = pat.subn("[]", s)
         if n: wr(p, new); cnt += 1; print("сделано      %s: get_ipset_list_hook() -> []" % os.path.relpath(p, REPO))
-    if not cnt: print("уже есть     get_ipset_list_hook() нигде не используется")
+    if not cnt: print("пропущено    get_ipset_list_hook() в страницах: %s" % ("IPSet перенесён, не трогаем" if ipset_hook_ported() else "нигде не используется"))
     # 13b: ej_net_iface_list в httpd/web_ex.c
     rel = "trunk/user/httpd/web_ex.c"; p = os.path.join(REPO, rel)
     if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return

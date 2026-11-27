@@ -17,7 +17,7 @@ All scripts are idempotent: a second run changes nothing. They take the two tree
 
 | File | Purpose |
 |---|---|
-| `port-build-fixes.py` | Rules 1–34 applied to the tree (AWG, DNS, nvram buffer, HNAT log, reboot after flashing, version with git hash, board profile flags). |
+| `port-build-fixes.py` | Rules 1–35 applied to the tree (AWG, DNS, nvram buffer, HNAT log, reboot after flashing, version with git hash, board profile flags). |
 | `port-dns-services.py` | DoH (https_dns_proxy), DoT (stubby + libgetdns), DNSCrypt, libyaml: packages, rc, httpd, pages, dictionaries. |
 | `port-dnsmasq.py` + `210-max-procs-4.patch` | dnsmasq 2.90 → 2.93 with the ng regex patches (needs libpcre). |
 | `port-ipset.py` | IPSet service: `ipset.sh`, "IPSet" tab, `dnsmasq.ipset` editor, update timer. |
@@ -104,6 +104,7 @@ After flashing, on the PC: `ssh-keygen -R 192.168.1.1`.
 - 29: `export STAGEDIR` for CMake. 30: reboot after flashing via `reboot(2)`.
 - 31, 32: firmware version and image name with the git hash. 33: `openssl` executable included in the RM2100 image.
 - 34: web UI footer: "2011-2026" and a GitHub link (`GH_NICK` in the rule).
+- 35: `wgc.sh`: `src_valid_mark=0` instead of `1` (with BusyBox 1.38 the sysctl now succeeds; strict `rp_filter` on `br0` then drops LAN client packets routed to `wg0` by fwmark).
 
 ## IPSet service
 - Enable with `ipset_enable` on the "IPSet" tab (off by default). Lists from `ipset.json` and `ipset_post_script.sh` are

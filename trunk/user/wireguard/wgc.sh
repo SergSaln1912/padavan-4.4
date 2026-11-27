@@ -97,7 +97,8 @@ prepare_wg()
 {
     modprobe -q $MODULE
 
-    sysctl -q net.ipv4.conf.all.src_valid_mark=1 2>/dev/null
+    # ng-port: src_valid_mark=0 (с =1 строгий rp_filter на br0 отбрасывает пакеты клиентов LAN, идущие в wg0 по fwmark)
+    echo 0 > /proc/sys/net/ipv4/conf/all/src_valid_mark 2>/dev/null
     sysctl -q net.ipv6.conf.all.disable_ipv6=0 2>/dev/null
     sysctl -q net.ipv6.conf.all.forwarding=1 2>/dev/null
 }

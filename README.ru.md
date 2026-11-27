@@ -17,7 +17,7 @@
 
 | Файл | Назначение |
 |---|---|
-| `port-build-fixes.py` | Правила 1–34 (AWG, DNS, буфер nvram, лог HNAT, перезагрузка после прошивки, версия с хешем git, флаги профилей плат). |
+| `port-build-fixes.py` | Правила 1–35 (AWG, DNS, буфер nvram, лог HNAT, перезагрузка после прошивки, версия с хешем git, флаги профилей плат). |
 | `port-dns-services.py` | DoH (https_dns_proxy), DoT (stubby + libgetdns), DNSCrypt, libyaml: пакеты, rc, httpd, страницы, словари. |
 | `port-dnsmasq.py` + `210-max-procs-4.patch` | dnsmasq 2.90 → 2.93 с regex-патчами ng (нужен libpcre). |
 | `port-ipset.py` | Сервис IPSet: `ipset.sh`, вкладка «IPSet», редактор `dnsmasq.ipset`, обновление по таймеру. |
@@ -104,6 +104,7 @@ getdns/stubby 1.7.3, wpa_supplicant 2.7 (EAP-PEAP).
 - 29: `export STAGEDIR` для CMake. 30: перезагрузка после прошивки через `reboot(2)`.
 - 31, 32: версия и имя образа с хешем git. 33: программа `openssl` включена в образ RM2100.
 - 34: подвал веб-интерфейса: «2011-2026» и ссылка на GitHub (`GH_NICK` в правиле).
+- 35: `wgc.sh`: `src_valid_mark=0` вместо `1` (в BusyBox 1.38 sysctl теперь срабатывает; строгий `rp_filter` на `br0` тогда отбрасывает пакеты клиентов LAN, уходящие в `wg0` по fwmark).
 
 ## Сервис IPSet
 - Включается переменной `ipset_enable` на вкладке «IPSet» (по умолчанию выключен). Списки из `ipset.json` и

@@ -700,8 +700,48 @@ set_cfg("FIRMWARE_INCLUDE_DNSCRYPT", "y", "DNSCrypt proxy ~0.5MB")
 set_cfg("FIRMWARE_INCLUDE_STUBBY", "y", "Stubby DNS-over-TLS (DoT) ~0.4MB")
 set_cfg("FIRMWARE_INCLUDE_DOH", "y", "doh_proxy DNS-over-HTTPS (DoH) ~0.5MB")
 
-# ---------------------------------------------------------------- 33. Программа openssl в образе RM2100 выключена
-# Проверено: wget из busybox 1.24 по https через openssl s_client не скачивает файл (rc=0, файл не создаётся), поэтому IPSet
-# качает через curl (он в образе), а openssl только увеличивал бы образ (+~0.4MB). Если правило 33 уже ставило y, возвращаем n.
-# Включить позже (вместе с обновлением OpenSSL): CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=y в trunk/configs/templates/RM2100.config.
-set_cfg("FIRMWARE_INCLUDE_OPENSSL_EXE", "n")
+# ---------------------------------------------------------------- 33. Программа openssl в образе RM2100 включена (~0.4MB)
+# Нужна другим модулям: openvpn-cert.sh (ключи и сертификаты OpenVPN на веб-странице), https-cert.sh (сертификат веб-интерфейса),
+# aliddns.sh. Без неё генерация сертификатов не работает. IPSet качает списки через curl, openssl ему не нужен
+# (busybox 1.24 wget по https через openssl s_client не работает). Если ранее было n, возвращаем y.
+set_cfg("FIRMWARE_INCLUDE_OPENSSL_EXE", "y", "Include \"openssl\" executable for generate certificates. ~0.4MB")
+
+# ---------------------------------------------------------------- 34. Подвал веб-интерфейса: год 2011-2026 и ник на GitHub
+# Текст подвала задаётся в trunk/user/www/Makefile (LABEL_COPYRIGHT_TEXT) и подставляется в словари вместо ZVCOPYRVZ.
+# В значении для sed слэши экранированы (\/), амперсанд тоже (\&).
+GH_NICK = "SergSaln1912"; COPY_YEAR = "2026"
+def footer_text():
+    rel = "trunk/user/www/Makefile"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    m = re.search(r"^LABEL_COPYRIGHT_TEXT='.*'$", s, re.M)
+    if not m: print("НЕ НАЙДЕНО   www/Makefile: LABEL_COPYRIGHT_TEXT"); return
+    t = m.group(0); orig = t
+    t = re.sub(r"© 2011-\d{4}", "© 2011-" + COPY_YEAR, t, count=1)
+    if "github.com\\/%s\"" % GH_NICK not in t:
+        t = t[:-1] + ' \\& <a href="https:\\/\\/github.com\\/%s" target="blank">%s<\\/a>\'' % (GH_NICK, GH_NICK)
+    if t == orig: print("уже есть     www/Makefile: подвал (%s, 2011-%s)" % (GH_NICK, COPY_YEAR)); return
+    s = s[:m.start()] + t + s[m.end():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      www/Makefile: подвал (%s, 2011-%s)" % (GH_NICK, COPY_YEAR))
+footer_text()
+
+# ---------------------------------------------------------------- 35. wgc.sh: src_valid_mark=0 (клиенты LAN в режиме по списку)
+# Исправление после перехода на BusyBox 1.38. В wgc.sh (из ng) стоит `sysctl -q net.ipv4.conf.all.src_valid_mark=1`.
+# В ядре 4.4 ключ есть, но BusyBox 1.24 sysctl отвечал «unknown key», и значение молча оставалось 0 (так работало).
+# BusyBox 1.38 ключ ставит: при src_valid_mark=1 проверка обратного пути идёт с fwmark -> маршрут через wg0, и строгий
+# rp_filter=1 на br0 отбрасывает пакеты клиентов LAN (ip route get ... iif br0 mark 0xca6c: «Invalid cross-device link»;
+# в conntrack только SYN_SENT, счётчики wg0 «отправлено» растёт, «принято» нет). Явно ставим 0 и rp_filter не трогаем.
+def wgc_src_valid_mark():
+    rel = "trunk/user/wireguard/wgc.sh"; p = os.path.join(REPO, rel)
+    if not os.path.exists(p): print("НЕТ ФАЙЛА    %s" % rel); return
+    raw = rd(p); crlf = "\r\n" in raw; s = raw.replace("\r\n", "\n")
+    if "ng-port: src_valid_mark=0" in s: print("уже есть     wgc.sh: src_valid_mark=0"); return
+    pat = re.compile(r'^([ \t]*)sysctl -q net\.ipv4\.conf\.all\.src_valid_mark=1[^\n]*$', re.M)
+    m = pat.search(s)
+    if not m: print("НЕ НАЙДЕНО   wgc.sh: sysctl src_valid_mark=1"); return
+    ind = m.group(1)
+    new = (ind + "# ng-port: src_valid_mark=0 (с =1 строгий rp_filter на br0 отбрасывает пакеты клиентов LAN, идущие в wg0 по fwmark)\n"
+           + ind + "echo 0 > /proc/sys/net/ipv4/conf/all/src_valid_mark 2>/dev/null")
+    s = s[:m.start()] + new + s[m.end():]
+    wr(p, s.replace("\n", "\r\n") if crlf else s); print("сделано      wgc.sh: src_valid_mark=1 -> 0")
+wgc_src_valid_mark()
